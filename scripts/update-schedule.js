@@ -5,8 +5,11 @@
  * Fetches the latest Fitchburg Line schedule and updates src/scheduleData.js
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const MBTA_API_BASE = 'https://api-v3.mbta.com';
 const ROUTE_ID = 'CR-Fitchburg';
@@ -69,8 +72,11 @@ async function fetchSchedules() {
     const weOutbound = await fetchSchedulesByStop(PORTER_STOP_ID, weekendDate, 'outbound');
     const weInbound = await fetchSchedulesByStop(NORTH_STATION_STOP_ID, weekendDate, 'inbound');
 
+    console.log('Fetching MBTA holidays...');
+    const holidays = await fetchMBTAHolidays();
+
     // Generate the scheduleData.js file
-    generateScheduleFile(wdOutbound, wdInbound, weOutbound, weInbound);
+    generateScheduleFile(wdOutbound, wdInbound, weOutbound, weInbound, holidays);
     console.log('✓ Schedule data updated successfully');
   } catch (error) {
     console.error('Error fetching schedules:', error.message);
@@ -111,12 +117,92 @@ async function fetchSchedulesByStop(stopId, dateStr, direction) {
     .sort((a, b) => timeToMin(a.time) - timeToMin(b.time));
 }
 
-function generateScheduleFile(wdOut, wdIn, weOut, weIn) {
+async function fetchMBTAHolidays() {
+  // Fetch services to identify holidays
+  const params = new URLSearchParams({
+    'filter[route]': ROUTE_ID,
+  });
+
+  const url = `${MBTA_API_BASE}/services?${params.toString()}`;
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`MBTA API error when fetching holidays: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  const services = data.data || [];
+
+  // Build holidays object from service calendars
+  const holidays = {};
+
+  for (const service of services) {
+    if (service.schedule_name && service.schedule_name.toLowerCase().includes('holiday')) {
+      // This is likely a special holiday service
+      const startDate = service.start_date;
+      const endDate = service.end_date;
+
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          const dateStr = formatDate(d);
+          // Try to get holiday name from service name
+          const name = extractHolidayName(service.schedule_name);
+          if (name) {
+            holidays[dateStr] = name;
+          }
+        }
+      }
+    }
+  }
+
+  if (Object.keys(holidays).length === 0) {
+    throw new Error('No holidays found in MBTA API response');
+  }
+
+  return holidays;
+}
+
+function extractHolidayName(serviceName) {
+  // Parse holiday names from service schedule names
+  const nameMap = {
+    'thanksgiving': 'Thanksgiving',
+    'christmas': 'Christmas',
+    'new year': "New Year's Day",
+    'mlk': 'Martin Luther King Jr. Day',
+    'presidents': "Presidents' Day",
+    'patriots': "Patriots' Day",
+    'memorial': 'Memorial Day',
+    'juneteenth': 'Juneteenth',
+    'independence': 'Independence Day',
+    'labor': 'Labor Day',
+    'columbus': 'Columbus Day',
+    'veterans': "Veterans Day",
+  };
+
+  const lower = serviceName.toLowerCase();
+  for (const [key, name] of Object.entries(nameMap)) {
+    if (lower.includes(key)) {
+      return name;
+    }
+  }
+  return null;
+}
+
+function generateScheduleFile(wdOut, wdIn, weOut, weIn, holidays) {
   const now = new Date();
   const dateStr = now.toISOString().split('T')[0];
 
+  // Format holidays object with proper indentation
+  const holidaysStr = Object.entries(holidays)
+    .map(([date, name]) => `  "${date}": "${name}"`)
+    .join(',\n');
+
   const content = `// Train schedule data for the Fitchburg Line
 // This file is automatically updated weekly by GitHub Actions
+// Schedule data and holidays are fetched from the MBTA API
 // Last updated: ${dateStr}
 
 export const OUTBOUND_CROSSING_OFFSET = 2; // minutes before Porter
@@ -135,22 +221,9 @@ export const weOutbound = ${JSON.stringify(weOut, null, 2)};
 export const weInbound = ${JSON.stringify(weIn, null, 2)};
 
 // MBTA holidays on which Commuter Rail runs a weekend schedule
+// Automatically fetched from MBTA API
 export const MBTA_HOLIDAYS = {
-  "2025-11-27": "Thanksgiving",
-  "2025-12-25": "Christmas",
-  "2026-01-01": "New Year's Day",
-  "2026-01-19": "Martin Luther King Jr. Day",
-  "2026-02-16": "Presidents' Day",
-  "2026-04-20": "Patriots' Day",
-  "2026-05-25": "Memorial Day",
-  "2026-06-19": "Juneteenth",
-  "2026-07-04": "Independence Day",
-  "2026-09-07": "Labor Day",
-  "2026-10-12": "Columbus Day",
-  "2026-11-11": "Veterans Day",
-  "2026-11-26": "Thanksgiving",
-  "2026-12-25": "Christmas",
-  "2027-01-01": "New Year's Day",
+${holidaysStr}
 };`;
 
   const filePath = path.join(__dirname, '../src/scheduleData.js');
@@ -159,4 +232,4 @@ export const MBTA_HOLIDAYS = {
 }
 
 // Run the update
-fetchSchedules();
+await fetchSchedules();
