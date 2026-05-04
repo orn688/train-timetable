@@ -439,17 +439,15 @@ export default function App() {
                     textDecoration: row.cancelled ? "line-through" : "none",
                     opacity: row.cancelled ? 0.55 : 1,
                   }}>
-                    {row.isLive && !row.cancelled && (
-                      <span title="Live prediction" style={{
-                        display: "inline-block",
-                        width: 6,
-                        height: 6,
-                        borderRadius: "50%",
-                        background: "#5dd86b",
-                        marginRight: 6,
-                        verticalAlign: "middle",
-                      }} />
-                    )}
+                    <span title={row.isLive && !row.cancelled ? "Live prediction" : undefined} style={{
+                      display: "inline-block",
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: row.isLive && !row.cancelled ? "#5dd86b" : "transparent",
+                      marginRight: 6,
+                      verticalAlign: "middle",
+                    }} />
                     {row.crossing}
                   </span>
                   <span style={{ fontSize: "10px", color: row.cancelled ? "#e0524b" : colors.textMuted, letterSpacing: "0.08em", alignSelf: "center", fontWeight: row.cancelled ? 600 : "normal" }}>
@@ -476,7 +474,12 @@ export default function App() {
         lineHeight: 1.7,
         letterSpacing: "0.04em",
       }}>
-        ⚠ Crossing times are <em>estimated</em> — ~{OUTBOUND_CROSSING_OFFSET} min before Porter (outbound) or ~{INBOUND_CROSSING_OFFSET} min after Porter (inbound). Schedule auto-updated weekly from the MBTA API (last: {LAST_UPDATED}); rows with a <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: "#5dd86b", verticalAlign: "middle" }} /> show live predictions. Always check <span style={{ color: colors.accent }}>mbta.com</span> for alerts & delays.
+        <div>
+          ⚠ Crossing times are <em>estimated</em> — ~{OUTBOUND_CROSSING_OFFSET} min before Porter (outbound) or ~{INBOUND_CROSSING_OFFSET} min after Porter (inbound). Schedule auto-updated weekly from the MBTA API (last: {LAST_UPDATED}); rows with a <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: "#5dd86b", verticalAlign: "middle" }} /> show live predictions. Always check <a href="https://www.mbta.com/schedules/CR-Fitchburg" target="_blank" rel="noopener noreferrer" style={{ color: colors.accent, textDecoration: "none" }}>mbta.com</a> for alerts & delays.
+        </div>
+        <div style={{ marginTop: "6px" }}>
+          <a href="https://github.com/orn688/train-timetable" target="_blank" rel="noopener noreferrer" style={{ color: colors.accent, textDecoration: "none" }}>source on GitHub ↗</a>
+        </div>
       </div>
     </div>
   );
