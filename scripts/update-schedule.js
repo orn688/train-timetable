@@ -13,21 +13,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const MBTA_API_BASE = 'https://api-v3.mbta.com';
 const ROUTE_ID = 'CR-Fitchburg';
-const PORTER_STOP_ID = 'place-porter';
-const NORTH_STATION_STOP_ID = 'place-north';
+const PORTER_STOP_ID = 'place-portr';
 
-// Time helpers
-const timeToMin = (timeStr) => {
-  const [h, m] = timeStr.split(':').map(Number);
-  return h * 60 + m;
-};
-
-const minToTime = (mins) => {
-  const h = Math.floor(mins / 60) % 24;
-  const m = mins % 60;
+const formatIsoTimeToAmPm = (isoStr) => {
+  const match = isoStr.match(/T(\d{2}):(\d{2})/);
+  if (!match) return null;
+  const h = Number(match[1]);
+  const m = match[2];
   const display12 = h % 12 === 0 ? 12 : h % 12;
   const ampm = h < 12 ? 'AM' : 'PM';
-  return `${display12}:${String(m).padStart(2, '0')} ${ampm}`;
+  return `${display12}:${m} ${ampm}`;
 };
 
 const isWeekday = (date) => {
@@ -65,17 +60,20 @@ async function fetchSchedules() {
     const weekendDate = formatDate(nextWeekend);
 
     console.log(`Fetching weekday schedule for ${weekdayDate}...`);
-    const wdOutbound = await fetchSchedulesByStop(PORTER_STOP_ID, weekdayDate, 'outbound');
-    const wdInbound = await fetchSchedulesByStop(NORTH_STATION_STOP_ID, weekdayDate, 'inbound');
+    const { outbound: wdOutbound, inbound: wdInbound } = await fetchPorterSchedules(weekdayDate);
 
     console.log(`Fetching weekend schedule for ${weekendDate}...`);
-    const weOutbound = await fetchSchedulesByStop(PORTER_STOP_ID, weekendDate, 'outbound');
-    const weInbound = await fetchSchedulesByStop(NORTH_STATION_STOP_ID, weekendDate, 'inbound');
+    const { outbound: weOutbound, inbound: weInbound } = await fetchPorterSchedules(weekendDate);
 
     console.log('Fetching MBTA holidays...');
     const holidays = await fetchMBTAHolidays();
 
-    // Generate the scheduleData.js file
+    for (const [name, rows] of [['wdOutbound', wdOutbound], ['wdInbound', wdInbound], ['weOutbound', weOutbound], ['weInbound', weInbound]]) {
+      if (rows.length === 0) {
+        throw new Error(`Refusing to write empty schedule: ${name} returned no rows`);
+      }
+    }
+
     generateScheduleFile(wdOutbound, wdInbound, weOutbound, weInbound, holidays);
     console.log('✓ Schedule data updated successfully');
   } catch (error) {
@@ -84,41 +82,49 @@ async function fetchSchedules() {
   }
 }
 
-async function fetchSchedulesByStop(stopId, dateStr, direction) {
+async function fetchPorterSchedules(dateStr) {
   const params = new URLSearchParams({
     'filter[route]': ROUTE_ID,
-    'filter[stop]': stopId,
+    'filter[stop]': PORTER_STOP_ID,
     'filter[date]': dateStr,
+    'include': 'trip',
     'sort': 'arrival_time',
   });
 
   const url = `${MBTA_API_BASE}/schedules?${params.toString()}`;
-
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`MBTA API error: ${response.statusText}`);
   }
 
-  const data = await response.json();
-  const schedules = data.data || [];
+  const body = await response.json();
+  const schedules = body.data || [];
+  const tripNames = new Map();
+  for (const item of body.included || []) {
+    if (item.type === 'trip') {
+      tripNames.set(item.id, item.attributes?.name);
+    }
+  }
 
-  // Filter by direction and extract train/time info
-  return schedules
-    .filter(s => {
-      if (direction === 'outbound') return s.direction_id === 0;
-      if (direction === 'inbound') return s.direction_id === 1;
-      return true;
-    })
-    .map(s => ({
-      train: s.trip?.short_name || s.trip?.name || 'Unknown',
-      time: s.arrival_time ? s.arrival_time.substring(0, 5) : 'N/A',
-    }))
-    .filter(item => item.time !== 'N/A')
-    .sort((a, b) => timeToMin(a.time) - timeToMin(b.time));
+  const outbound = [];
+  const inbound = [];
+  for (const s of schedules) {
+    const attrs = s.attributes || {};
+    const tripId = s.relationships?.trip?.data?.id;
+    const train = tripNames.get(tripId);
+    const isoTime = attrs.arrival_time || attrs.departure_time;
+    if (!train || !isoTime) continue;
+    const porter = formatIsoTimeToAmPm(isoTime);
+    if (!porter) continue;
+    const row = { train, porter };
+    if (attrs.direction_id === 0) outbound.push(row);
+    else if (attrs.direction_id === 1) inbound.push(row);
+  }
+
+  return { outbound, inbound };
 }
 
 async function fetchMBTAHolidays() {
-  // Fetch services to identify holidays
   const params = new URLSearchParams({
     'filter[route]': ROUTE_ID,
   });
@@ -133,27 +139,19 @@ async function fetchMBTAHolidays() {
   const data = await response.json();
   const services = data.data || [];
 
-  // Build holidays object from service calendars
+  // Holidays appear as added_dates on Weekend services, paired with a name in added_dates_notes
   const holidays = {};
 
   for (const service of services) {
-    if (service.schedule_name && service.schedule_name.toLowerCase().includes('holiday')) {
-      // This is likely a special holiday service
-      const startDate = service.start_date;
-      const endDate = service.end_date;
-
-      if (startDate && endDate) {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-
-        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-          const dateStr = formatDate(d);
-          // Try to get holiday name from service name
-          const name = extractHolidayName(service.schedule_name);
-          if (name) {
-            holidays[dateStr] = name;
-          }
-        }
+    const attrs = service.attributes || {};
+    if (attrs.schedule_type !== 'Weekend') continue;
+    const dates = attrs.added_dates || [];
+    const notes = attrs.added_dates_notes || [];
+    for (let i = 0; i < dates.length; i++) {
+      const date = dates[i];
+      const name = notes[i];
+      if (date && name) {
+        holidays[date] = name;
       }
     }
   }
@@ -163,32 +161,6 @@ async function fetchMBTAHolidays() {
   }
 
   return holidays;
-}
-
-function extractHolidayName(serviceName) {
-  // Parse holiday names from service schedule names
-  const nameMap = {
-    'thanksgiving': 'Thanksgiving',
-    'christmas': 'Christmas',
-    'new year': "New Year's Day",
-    'mlk': 'Martin Luther King Jr. Day',
-    'presidents': "Presidents' Day",
-    'patriots': "Patriots' Day",
-    'memorial': 'Memorial Day',
-    'juneteenth': 'Juneteenth',
-    'independence': 'Independence Day',
-    'labor': 'Labor Day',
-    'columbus': 'Columbus Day',
-    'veterans': "Veterans Day",
-  };
-
-  const lower = serviceName.toLowerCase();
-  for (const [key, name] of Object.entries(nameMap)) {
-    if (lower.includes(key)) {
-      return name;
-    }
-  }
-  return null;
 }
 
 function generateScheduleFile(wdOut, wdIn, weOut, weIn, holidays) {
