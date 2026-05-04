@@ -70,10 +70,12 @@ const fetchPredictions = async (signal) => {
   for (const p of body.data || []) {
     const tripId = p.relationships?.trip?.data?.id;
     const train = tripNames.get(tripId);
+    if (!train) continue;
+    const cancelled = p.attributes?.schedule_relationship === "CANCELLED";
     const iso = p.attributes?.arrival_time || p.attributes?.departure_time;
-    if (!train || !iso) continue;
-    const porter = isoToAmPm(iso);
-    if (porter) map.set(train, porter);
+    const porter = iso ? isoToAmPm(iso) : null;
+    if (!porter && !cancelled) continue;
+    map.set(train, { porter, cancelled });
   }
   return map;
 };
@@ -148,16 +150,6 @@ export default function App() {
   const scrollContainerRef = useRef(null);
 
   useEffect(() => {
-    if (nextTrainRef.current && scrollContainerRef.current) {
-      const container = scrollContainerRef.current;
-      const rowRect = nextTrainRef.current.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-      const top = container.scrollTop + rowRect.top - containerRect.top - 24;
-      container.scrollTo({ top, behavior: "smooth" });
-    }
-  }, [day, dir]); // on initial load and when tabs change
-
-  useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
     const onScroll = () => setIsScrolled(container.scrollTop > 0);
@@ -168,28 +160,20 @@ export default function App() {
   const outboundData = day === "weekday" ? wdOutbound : weOutbound;
   const inboundData = day === "weekday" ? wdInbound : weInbound;
 
-  const outboundRows = outboundData.map(r => {
-    const livePorter = predictions.get(r.train);
-    const porter = livePorter ?? r.porter;
+  const decorate = (rows, offset, direction) => rows.map(r => {
+    const live = predictions.get(r.train);
+    const porter = live?.porter ?? r.porter;
     return {
       ...r,
       porter,
-      isLive: !!livePorter,
-      crossing: addMinutes(porter, -OUTBOUND_CROSSING_OFFSET),
-      direction: "→ Wachusett",
+      isLive: !!live?.porter,
+      cancelled: !!live?.cancelled,
+      crossing: addMinutes(porter, offset),
+      direction,
     };
   });
-  const inboundRows = inboundData.map(r => {
-    const livePorter = predictions.get(r.train);
-    const porter = livePorter ?? r.porter;
-    return {
-      ...r,
-      porter,
-      isLive: !!livePorter,
-      crossing: addMinutes(porter, INBOUND_CROSSING_OFFSET),
-      direction: "→ North Station",
-    };
-  });
+  const outboundRows = decorate(outboundData, -OUTBOUND_CROSSING_OFFSET, "→ Wachusett");
+  const inboundRows = decorate(inboundData, INBOUND_CROSSING_OFFSET, "→ North Station");
 
   let allRows = [];
   if (dir === "both") {
@@ -200,6 +184,25 @@ export default function App() {
   } else {
     allRows = inboundRows.map(r => ({ ...r, dir: "in" }));
   }
+
+  // Identify the "next" non-passed row so the auto-scroll effect can re-fire
+  // when predictions push the previously-passed train back into the future.
+  let nextTrainKey = null;
+  for (let i = 0; i < allRows.length; i++) {
+    const r = allRows[i];
+    const passed = day === todayType && (timeToMin(r.crossing) ?? 9999) < nowMin - 5;
+    if (!passed) { nextTrainKey = `${r.dir}-${r.train}-${i}`; break; }
+  }
+
+  useEffect(() => {
+    if (nextTrainRef.current && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const rowRect = nextTrainRef.current.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      const top = container.scrollTop + rowRect.top - containerRect.top - 24;
+      container.scrollTo({ top, behavior: "smooth" });
+    }
+  }, [day, dir, nextTrainKey]);
 
   // Color scheme based on dark/light mode
   const colors = isDarkMode ? {
@@ -433,8 +436,10 @@ export default function App() {
                     color: row.dir === "out" ? colors.outbound : colors.inbound,
                     letterSpacing: "0.02em",
                     whiteSpace: "nowrap",
+                    textDecoration: row.cancelled ? "line-through" : "none",
+                    opacity: row.cancelled ? 0.55 : 1,
                   }}>
-                    {row.isLive && (
+                    {row.isLive && !row.cancelled && (
                       <span title="Live prediction" style={{
                         display: "inline-block",
                         width: 6,
@@ -447,8 +452,8 @@ export default function App() {
                     )}
                     {row.crossing}
                   </span>
-                  <span style={{ fontSize: "10px", color: colors.textMuted, letterSpacing: "0.08em", alignSelf: "center" }}>
-                    {row.direction}
+                  <span style={{ fontSize: "10px", color: row.cancelled ? "#e0524b" : colors.textMuted, letterSpacing: "0.08em", alignSelf: "center", fontWeight: row.cancelled ? 600 : "normal" }}>
+                    {row.cancelled ? "CANCELLED" : row.direction}
                   </span>
                   <span style={{ fontSize: "10px", color: colors.textDim, textAlign: "right", alignSelf: "center", letterSpacing: "0.05em" }}>
                     #{row.train}
