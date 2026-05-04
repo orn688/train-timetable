@@ -1,0 +1,95 @@
+// Train schedule data for the Fitchburg Line
+// This file is automatically updated weekly by GitHub Actions
+// Last updated: 2026-05-04
+
+export const OUTBOUND_CROSSING_OFFSET = 2; // minutes before Porter
+export const INBOUND_CROSSING_OFFSET = 5; // minutes after Porter (inc. stop time + slower approach)
+
+// Weekday outbound: Porter times (from MBTA schedule)
+export const wdOutbound = [
+  { train: "1401", porter: "5:50 AM" },
+  { train: "405", porter: "6:30 AM" },
+  { train: "407", porter: "7:40 AM" },
+  { train: "409", porter: "8:40 AM" },
+  { train: "1411", porter: "9:40 AM" },
+  { train: "413", porter: "10:40 AM" },
+  { train: "1415", porter: "11:40 AM" },
+  { train: "417", porter: "12:40 PM" },
+  { train: "1419", porter: "1:40 PM" },
+  { train: "421", porter: "2:40 PM" },
+  { train: "425", porter: "3:50 PM" },
+  { train: "1427", porter: "4:35 PM" },
+  { train: "429", porter: "5:10 PM" },
+  { train: "431", porter: "5:40 PM" },
+  { train: "435", porter: "6:40 PM" },
+  { train: "439", porter: "7:40 PM" },
+  { train: "443", porter: "9:10 PM" },
+  { train: "445", porter: "10:40 PM" },
+  { train: "447", porter: "12:00 AM" },
+];
+
+// Weekday inbound: Porter times (from MBTA schedule)
+export const wdInbound = [
+  { train: "400", porter: "5:47 AM" },
+  { train: "402", porter: "6:45 AM" },
+  { train: "406", porter: "7:18 AM" },
+  { train: "1408", porter: "7:52 AM" },
+  { train: "410", porter: "8:39 AM" },
+  { train: "414", porter: "9:43 AM" },
+  { train: "416", porter: "10:47 AM" },
+  { train: "1418", porter: "11:47 AM" },
+  { train: "420", porter: "12:47 PM" },
+  { train: "1422", porter: "1:47 PM" },
+  { train: "424", porter: "2:47 PM" },
+  { train: "1426", porter: "3:47 PM" },
+  { train: "428", porter: "4:47 PM" },
+  { train: "434", porter: "5:57 PM" },
+  { train: "1436", porter: "6:34 PM" },
+  { train: "438", porter: "7:39 PM" },
+  { train: "442", porter: "8:52 PM" },
+  { train: "446", porter: "10:47 PM" },
+  { train: "448", porter: "12:17 AM" },
+];
+
+// Weekend outbound: Porter times
+export const weOutbound = [
+  { train: "5407", porter: "7:55 AM" },
+  { train: "5413", porter: "10:25 AM" },
+  { train: "5417", porter: "12:25 PM" },
+  { train: "5421", porter: "2:25 PM" },
+  { train: "5427", porter: "4:25 PM" },
+  { train: "5435", porter: "6:25 PM" },
+  { train: "5441", porter: "8:50 PM" },
+  { train: "5447", porter: "11:50 PM" },
+];
+
+// Weekend inbound: Porter times
+export const weInbound = [
+  { train: "5402", porter: "6:22 AM" },
+  { train: "5412", porter: "9:22 AM" },
+  { train: "5418", porter: "11:47 AM" },
+  { train: "5422", porter: "1:47 PM" },
+  { train: "5426", porter: "3:47 PM" },
+  { train: "5434", porter: "5:47 PM" },
+  { train: "5438", porter: "7:47 PM" },
+  { train: "5444", porter: "10:17 PM" },
+];
+
+// MBTA holidays on which Commuter Rail runs a weekend schedule
+export const MBTA_HOLIDAYS = {
+  "2025-11-27": "Thanksgiving",
+  "2025-12-25": "Christmas",
+  "2026-01-01": "New Year's Day",
+  "2026-01-19": "Martin Luther King Jr. Day",
+  "2026-02-16": "Presidents' Day",
+  "2026-04-20": "Patriots' Day",
+  "2026-05-25": "Memorial Day",
+  "2026-06-19": "Juneteenth",
+  "2026-07-04": "Independence Day",
+  "2026-09-07": "Labor Day",
+  "2026-10-12": "Columbus Day",
+  "2026-11-11": "Veterans Day",
+  "2026-11-26": "Thanksgiving",
+  "2026-12-25": "Christmas",
+  "2027-01-01": "New Year's Day",
+};

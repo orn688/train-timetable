@@ -103,9 +103,10 @@ If you need to trigger a deployment manually (e.g., after config changes):
 
 ### Important Notes
 
-- If you change the repository name, update the `base` in `vite.config.js` to match `/your-new-repo-name/`.
-- The app uses MBTA schedule data; update the `wdOutbound`, `wdInbound`, `weOutbound`, `weInbound` arrays in `src/App.jsx` for schedule changes.
-- Holiday dates are hardcoded in the `MBTA_HOLIDAYS` object.
+- **Schedule data is automatically updated weekly** via GitHub Actions (every Monday at 2 AM UTC)
+- If you need to manually update schedules, run: `node scripts/update-schedule.js`
+- If you change the repository name, update the `base` in `vite.config.js` to match `/your-new-repo-name/`
+- The app uses MBTA schedule data fetched from their public API
 
 ## Technologies Used
 
