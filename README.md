@@ -59,19 +59,13 @@ This creates a `dist/` folder with the production build.
    gh repo create train-timetable --private --source=. --remote=origin --push
    ```
 
-3. **Deploy to GitHub Pages**:
-   ```bash
-   npm run deploy
-   ```
-
-4. **Enable GitHub Pages**:
+3. **Enable GitHub Pages**:
    - Go to your repository settings
    - Navigate to "Pages"
-   - Set source to "Deploy from a branch"
-   - Select the `gh-pages` branch
+   - Set source to "GitHub Actions"
    - Click "Save"
 
-Your site will be live at: `https://yourusername.github.io/train-timetable/`
+The site will be automatically deployed when you push to the `main` branch.
 
 ### Updating the Site
 
@@ -97,12 +91,15 @@ To update the deployed site with new changes:
    git push origin main
    ```
 
-5. **Deploy the update**:
-   ```bash
-   npm run deploy
-   ```
+The GitHub Actions workflow will automatically build and deploy your changes to GitHub Pages.
 
-The `npm run deploy` command builds the project and pushes the `dist/` folder to the `gh-pages` branch, which triggers GitHub Pages to update the live site.
+### Manual Deployment
+
+If you need to trigger a deployment manually (e.g., after config changes):
+
+- Go to the "Actions" tab in your GitHub repository
+- Click on the "Deploy to GitHub Pages" workflow
+- Click "Run workflow"
 
 ### Important Notes
 
