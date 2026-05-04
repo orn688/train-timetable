@@ -286,14 +286,38 @@ export default function App() {
         zIndex: 10,
         boxShadow: isScrolled ? `0 8px 24px 8px ${colors.bg}` : "none",
       }}>
-        <div style={{
-          fontFamily: "'Bebas Neue', sans-serif",
-          fontSize: "38px",
-          letterSpacing: "0.04em",
-          lineHeight: 1,
-          color: colors.text,
-        }}>
-          FITCHBURG LINE
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div style={{
+            fontFamily: "'Bebas Neue', sans-serif",
+            fontSize: "38px",
+            letterSpacing: "0.04em",
+            lineHeight: 1,
+            color: colors.text,
+          }}>
+            FITCHBURG LINE
+          </div>
+          <button
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+            style={{
+              background: colors.bgSecondary,
+              border: `1px solid ${colors.border}`,
+              borderRadius: "999px",
+              padding: "4px 10px",
+              fontSize: "14px",
+              lineHeight: 1,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              fontFamily: "'DM Mono', monospace",
+              color: colors.textDim,
+            }}
+          >
+            <span style={{ opacity: isDarkMode ? 1 : 0.35 }}>🌙</span>
+            <span style={{ color: colors.textDim }}>/</span>
+            <span style={{ opacity: isDarkMode ? 0.35 : 1 }}>☀️</span>
+          </button>
         </div>
         <div style={{ fontSize: "12px", color: colors.accent, letterSpacing: "0.15em", marginTop: "4px", textTransform: "uppercase" }}>
           Park St. Crossing · Somerville
@@ -319,45 +343,19 @@ export default function App() {
         )}
         <div style={{ marginBottom: "16px" }} />
 
-        {/* Mode toggle button */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-          <div style={{ display: "flex", gap: "0" }}>
-            <button
-              className={`tab-btn ${day === "weekday" ? "active" : ""}`}
-              style={{ borderRadius: "4px 0 0 4px" }}
-              onClick={() => setDay("weekday")}>
-              Weekday{todayType === "weekday" && <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: day === "weekday" ? colors.bg : colors.accent, marginLeft: 6, verticalAlign: "middle", marginBottom: 1 }} />}
-            </button>
-            <button
-              className={`tab-btn ${day === "weekend" ? "active" : ""}`}
-              style={{ borderRadius: "0 4px 4px 0", borderLeft: "none" }}
-              onClick={() => setDay("weekend")}>
-              Weekend{todayType === "weekend" && <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: day === "weekend" ? colors.bg : colors.accent, marginLeft: 6, verticalAlign: "middle", marginBottom: 1 }} />}
-            </button>
-          </div>
+        {/* Day toggle */}
+        <div style={{ display: "flex", gap: "0", marginBottom: "12px" }}>
           <button
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            style={{
-              padding: "6px 12px",
-              border: `1px solid ${colors.border}`,
-              background: colors.bgSecondary,
-              color: colors.text,
-              fontFamily: "'DM Mono', monospace",
-              fontSize: "11px",
-              cursor: "pointer",
-              borderRadius: "4px",
-              transition: "all 0.15s",
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.borderColor = colors.textMuted;
-              e.target.style.color = colors.text;
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.borderColor = colors.border;
-              e.target.style.color = colors.text;
-            }}
-          >
-            {isDarkMode ? "☀️ Light" : "🌙 Dark"}
+            className={`tab-btn ${day === "weekday" ? "active" : ""}`}
+            style={{ borderRadius: "4px 0 0 4px" }}
+            onClick={() => setDay("weekday")}>
+            Weekday{todayType === "weekday" && <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: day === "weekday" ? colors.bg : colors.accent, marginLeft: 6, verticalAlign: "middle", marginBottom: 1 }} />}
+          </button>
+          <button
+            className={`tab-btn ${day === "weekend" ? "active" : ""}`}
+            style={{ borderRadius: "0 4px 4px 0", borderLeft: "none" }}
+            onClick={() => setDay("weekend")}>
+            Weekend{todayType === "weekend" && <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: day === "weekend" ? colors.bg : colors.accent, marginLeft: 6, verticalAlign: "middle", marginBottom: 1 }} />}
           </button>
         </div>
 
@@ -391,7 +389,7 @@ export default function App() {
         {/* Table header */}
         <div style={{
           display: "grid",
-          gridTemplateColumns: "90px 1fr 80px",
+          gridTemplateColumns: "108px 1fr 80px",
           padding: "8px 12px",
           fontSize: "9px",
           letterSpacing: "0.15em",
@@ -421,7 +419,7 @@ export default function App() {
                   className={`fade-row ${row.dir === "out" ? "row-out" : "row-in"}`}
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "90px 1fr 80px",
+                    gridTemplateColumns: "108px 1fr 80px",
                     padding: "11px 12px",
                     marginBottom: "3px",
                     borderRadius: "0 4px 4px 0",
@@ -434,6 +432,7 @@ export default function App() {
                     fontWeight: "500",
                     color: row.dir === "out" ? colors.outbound : colors.inbound,
                     letterSpacing: "0.02em",
+                    whiteSpace: "nowrap",
                   }}>
                     {row.isLive && (
                       <span title="Live prediction" style={{
