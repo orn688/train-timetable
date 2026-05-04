@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  OUTBOUND_CROSSING_OFFSET,
-  INBOUND_CROSSING_OFFSET,
+  LAST_UPDATED,
   wdOutbound,
   wdInbound,
   weOutbound,
   weInbound,
   MBTA_HOLIDAYS,
 } from "./scheduleData";
+
+const OUTBOUND_CROSSING_OFFSET = 2; // minutes before Porter
+const INBOUND_CROSSING_OFFSET = 5; // minutes after Porter (inc. stop time + slower approach)
 
 const addMinutes = (timeStr, mins) => {
   if (!timeStr) return null;
@@ -44,6 +46,37 @@ const getDayType = () => {
 };
 
 const getHolidayNote = () => MBTA_HOLIDAYS[getLocalDateStr()] ?? null;
+
+const isoToAmPm = (isoStr) => {
+  const m = isoStr.match(/T(\d{2}):(\d{2})/);
+  if (!m) return null;
+  const h = Number(m[1]);
+  const mm = m[2];
+  const display12 = h % 12 === 0 ? 12 : h % 12;
+  const ampm = h < 12 ? "AM" : "PM";
+  return `${display12}:${mm} ${ampm}`;
+};
+
+const fetchPredictions = async (signal) => {
+  const url = "https://api-v3.mbta.com/predictions?filter[route]=CR-Fitchburg&filter[stop]=place-portr&include=trip";
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error(`MBTA predictions: ${res.status}`);
+  const body = await res.json();
+  const tripNames = new Map();
+  for (const inc of body.included || []) {
+    if (inc.type === "trip") tripNames.set(inc.id, inc.attributes?.name);
+  }
+  const map = new Map();
+  for (const p of body.data || []) {
+    const tripId = p.relationships?.trip?.data?.id;
+    const train = tripNames.get(tripId);
+    const iso = p.attributes?.arrival_time || p.attributes?.departure_time;
+    if (!train || !iso) continue;
+    const porter = isoToAmPm(iso);
+    if (porter) map.set(train, porter);
+  }
+  return map;
+};
 
 const timeToMin = (t) => {
   if (!t) return null;
@@ -85,6 +118,30 @@ export default function App() {
   }, []);
 
   const todayType = getDayType();
+  const [predictions, setPredictions] = useState(() => new Map());
+
+  useEffect(() => {
+    if (day !== todayType) {
+      setPredictions(new Map());
+      return;
+    }
+    const controller = new AbortController();
+    const load = async () => {
+      try {
+        const map = await fetchPredictions(controller.signal);
+        setPredictions(map);
+      } catch (err) {
+        if (err.name !== "AbortError") setPredictions(new Map());
+      }
+    };
+    load();
+    const interval = setInterval(load, 30000);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
+  }, [day, todayType]);
+
   const [isScrolled, setIsScrolled] = useState(false);
   const nextTrainRef = useRef(null);
   const headerRef = useRef(null);
@@ -111,16 +168,28 @@ export default function App() {
   const outboundData = day === "weekday" ? wdOutbound : weOutbound;
   const inboundData = day === "weekday" ? wdInbound : weInbound;
 
-  const outboundRows = outboundData.map(r => ({
-    ...r,
-    crossing: addMinutes(r.porter, -OUTBOUND_CROSSING_OFFSET),
-    direction: "→ Wachusett",
-  }));
-  const inboundRows = inboundData.map(r => ({
-    ...r,
-    crossing: addMinutes(r.porter, INBOUND_CROSSING_OFFSET),
-    direction: "→ North Station",
-  }));
+  const outboundRows = outboundData.map(r => {
+    const livePorter = predictions.get(r.train);
+    const porter = livePorter ?? r.porter;
+    return {
+      ...r,
+      porter,
+      isLive: !!livePorter,
+      crossing: addMinutes(porter, -OUTBOUND_CROSSING_OFFSET),
+      direction: "→ Wachusett",
+    };
+  });
+  const inboundRows = inboundData.map(r => {
+    const livePorter = predictions.get(r.train);
+    const porter = livePorter ?? r.porter;
+    return {
+      ...r,
+      porter,
+      isLive: !!livePorter,
+      crossing: addMinutes(porter, INBOUND_CROSSING_OFFSET),
+      direction: "→ North Station",
+    };
+  });
 
   let allRows = [];
   if (dir === "both") {
@@ -366,6 +435,17 @@ export default function App() {
                     color: row.dir === "out" ? colors.outbound : colors.inbound,
                     letterSpacing: "0.02em",
                   }}>
+                    {row.isLive && (
+                      <span title="Live prediction" style={{
+                        display: "inline-block",
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        background: "#5dd86b",
+                        marginRight: 6,
+                        verticalAlign: "middle",
+                      }} />
+                    )}
                     {row.crossing}
                   </span>
                   <span style={{ fontSize: "10px", color: colors.textMuted, letterSpacing: "0.08em", alignSelf: "center" }}>
@@ -392,7 +472,7 @@ export default function App() {
         lineHeight: 1.7,
         letterSpacing: "0.04em",
       }}>
-        ⚠ Crossing times are <em>estimated</em> — ~{OUTBOUND_CROSSING_OFFSET} min before Porter (outbound) or ~{INBOUND_CROSSING_OFFSET} min after Porter (inbound). Source: MBTA Fall/Winter 2025 schedule, effective Oct 27, 2025. Always check <span style={{ color: colors.accent }}>mbta.com</span> for alerts & delays.
+        ⚠ Crossing times are <em>estimated</em> — ~{OUTBOUND_CROSSING_OFFSET} min before Porter (outbound) or ~{INBOUND_CROSSING_OFFSET} min after Porter (inbound). Schedule auto-updated weekly from the MBTA API (last: {LAST_UPDATED}); rows with a <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: "#5dd86b", verticalAlign: "middle" }} /> show live predictions. Always check <span style={{ color: colors.accent }}>mbta.com</span> for alerts & delays.
       </div>
     </div>
   );

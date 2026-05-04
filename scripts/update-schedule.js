@@ -175,10 +175,8 @@ function generateScheduleFile(wdOut, wdIn, weOut, weIn, holidays) {
   const content = `// Train schedule data for the Fitchburg Line
 // This file is automatically updated weekly by GitHub Actions
 // Schedule data and holidays are fetched from the MBTA API
-// Last updated: ${dateStr}
 
-export const OUTBOUND_CROSSING_OFFSET = 2; // minutes before Porter
-export const INBOUND_CROSSING_OFFSET = 5; // minutes after Porter (inc. stop time + slower approach)
+export const LAST_UPDATED = "${dateStr}";
 
 // Weekday outbound: Porter times (from MBTA schedule)
 export const wdOutbound = ${JSON.stringify(wdOut, null, 2)};
