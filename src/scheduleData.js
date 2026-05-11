@@ -2,7 +2,7 @@
 // This file is automatically updated weekly by GitHub Actions
 // Schedule data and holidays are fetched from the MBTA API
 
-export const LAST_UPDATED = "2026-05-04";
+export const LAST_UPDATED = "2026-05-11";
 
 // Weekday outbound: Porter times (from MBTA schedule)
 export const wdOutbound = [
