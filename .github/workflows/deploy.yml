@@ -4,6 +4,13 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+  # Pushes made by another workflow using the default GITHUB_TOKEN do not
+  # trigger `push` events (GitHub blocks this to prevent recursion), so we
+  # chain off Update Train Schedule's completion to deploy its commits.
+  workflow_run:
+    workflows: ["Update Train Schedule"]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -17,6 +24,10 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # workflow_run fires on any completion (including failure/cancelled), so
+    # gate the build on a successful upstream run. Other event types (push,
+    # workflow_dispatch) always proceed.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
