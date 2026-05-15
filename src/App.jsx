@@ -104,7 +104,6 @@ export default function App() {
   const [todayStr, setTodayStr] = useState(getLocalDateStr);
   const initialDate = AVAILABLE_DATES.includes(todayStr) ? todayStr : AVAILABLE_DATES[0];
   const [selectedDate, setSelectedDate] = useState(initialDate);
-  const [dir, setDir] = useState("both");
 
   // Keep todayStr fresh in case the page sits open past midnight.
   useEffect(() => {
@@ -197,15 +196,10 @@ export default function App() {
   const outboundRows = decorate(outboundData, -OUTBOUND_CROSSING_OFFSET, "→ Wachusett");
   const inboundRows = decorate(inboundData, INBOUND_CROSSING_OFFSET, "→ North Station");
 
-  let allRows = [];
-  if (dir === "both") {
-    allRows = [...outboundRows.map(r => ({ ...r, dir: "out" })), ...inboundRows.map(r => ({ ...r, dir: "in" }))];
-    allRows.sort((a, b) => (timeToMin(a.crossing) ?? 9999) - (timeToMin(b.crossing) ?? 9999));
-  } else if (dir === "outbound") {
-    allRows = outboundRows.map(r => ({ ...r, dir: "out" }));
-  } else {
-    allRows = inboundRows.map(r => ({ ...r, dir: "in" }));
-  }
+  const allRows = [
+    ...outboundRows.map(r => ({ ...r, dir: "out" })),
+    ...inboundRows.map(r => ({ ...r, dir: "in" })),
+  ].sort((a, b) => (timeToMin(a.crossing) ?? 9999) - (timeToMin(b.crossing) ?? 9999));
 
   // Identify the "next" non-passed row so the auto-scroll effect can re-fire
   // when predictions push the previously-passed train back into the future.
@@ -224,7 +218,7 @@ export default function App() {
       const top = container.scrollTop + rowRect.top - containerRect.top - 24;
       container.scrollTo({ top, behavior: "smooth" });
     }
-  }, [selectedDate, dir, nextTrainKey]);
+  }, [selectedDate, nextTrainKey]);
 
   // Color scheme based on dark/light mode
   const colors = isDarkMode ? {
@@ -432,21 +426,6 @@ export default function App() {
               </button>
             );
           })}
-        </div>
-
-        {/* Direction toggle */}
-        <div style={{ display: "flex", gap: "0", marginBottom: "12px" }}>
-          {["both", "outbound", "inbound"].map((d, i) => (
-            <button key={d}
-              className={`tab-btn ${dir === d ? "active" : ""}`}
-              style={{
-                borderRadius: i === 0 ? "4px 0 0 4px" : i === 2 ? "0 4px 4px 0" : "0",
-                borderLeft: i > 0 ? "none" : undefined,
-              }}
-              onClick={() => setDir(d)}>
-              {d === "both" ? "All Trains" : d === "outbound" ? "→ Wachusett" : "→ N Station"}
-            </button>
-          ))}
         </div>
 
         {/* Legend */}
