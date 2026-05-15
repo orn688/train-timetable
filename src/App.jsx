@@ -1,12 +1,30 @@
 import { useState, useEffect, useRef } from "react";
 import {
   LAST_UPDATED,
-  wdOutbound,
-  wdInbound,
-  weOutbound,
-  weInbound,
+  SCHEDULES,
   MBTA_HOLIDAYS,
 } from "./scheduleData";
+
+const AVAILABLE_DATES = Object.keys(SCHEDULES).sort();
+
+const parseLocalDate = (s) => {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+
+const formatDateLabel = (dateStr, todayStr) => {
+  const date = parseLocalDate(dateStr);
+  const today = parseLocalDate(todayStr);
+  const diffDays = Math.round((date - today) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Tomorrow";
+  return date.toLocaleDateString(undefined, { weekday: "short" });
+};
+
+const formatDateSub = (dateStr) => {
+  const date = parseLocalDate(dateStr);
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+};
 
 const OUTBOUND_CROSSING_OFFSET = 2; // minutes before Porter
 const INBOUND_CROSSING_OFFSET = 5; // minutes after Porter (inc. stop time + slower approach)
@@ -37,15 +55,7 @@ const getLocalDateStr = () => {
   return `${y}-${m}-${d}`;
 };
 
-const getDayType = () => {
-  const now = new Date();
-  const dow = now.getDay(); // 0=Sun, 6=Sat
-  const dateStr = getLocalDateStr();
-  if (dow === 0 || dow === 6 || dateStr in MBTA_HOLIDAYS) return "weekend";
-  return "weekday";
-};
-
-const getHolidayNote = () => MBTA_HOLIDAYS[getLocalDateStr()] ?? null;
+const getHolidayNote = (dateStr) => MBTA_HOLIDAYS[dateStr] ?? null;
 
 const isoToAmPm = (isoStr) => {
   const m = isoStr.match(/T(\d{2}):(\d{2})/);
@@ -91,8 +101,19 @@ const timeToMin = (t) => {
 };
 
 export default function App() {
-  const [day, setDay] = useState(getDayType);
+  const [todayStr, setTodayStr] = useState(getLocalDateStr);
+  const initialDate = AVAILABLE_DATES.includes(todayStr) ? todayStr : AVAILABLE_DATES[0];
+  const [selectedDate, setSelectedDate] = useState(initialDate);
   const [dir, setDir] = useState("both");
+
+  // Keep todayStr fresh in case the page sits open past midnight.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newToday = getLocalDateStr();
+      setTodayStr((prev) => (prev === newToday ? prev : newToday));
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
   const [nowMin, setNowMin] = useState(() => {
     const n = new Date();
     const total = n.getHours() * 60 + n.getMinutes();
@@ -119,11 +140,11 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  const todayType = getDayType();
+  const isToday = selectedDate === todayStr;
   const [predictions, setPredictions] = useState(() => new Map());
 
   useEffect(() => {
-    if (day !== todayType) {
+    if (!isToday) {
       setPredictions(new Map());
       return;
     }
@@ -142,7 +163,7 @@ export default function App() {
       controller.abort();
       clearInterval(interval);
     };
-  }, [day, todayType]);
+  }, [isToday]);
 
   const [isScrolled, setIsScrolled] = useState(false);
   const nextTrainRef = useRef(null);
@@ -157,8 +178,9 @@ export default function App() {
     return () => container.removeEventListener("scroll", onScroll);
   }, []);
 
-  const outboundData = day === "weekday" ? wdOutbound : weOutbound;
-  const inboundData = day === "weekday" ? wdInbound : weInbound;
+  const dayData = SCHEDULES[selectedDate];
+  const outboundData = dayData?.outbound ?? [];
+  const inboundData = dayData?.inbound ?? [];
 
   const decorate = (rows, offset, direction) => rows.map(r => {
     const live = predictions.get(r.train);
@@ -190,7 +212,7 @@ export default function App() {
   let nextTrainKey = null;
   for (let i = 0; i < allRows.length; i++) {
     const r = allRows[i];
-    const passed = day === todayType && (timeToMin(r.crossing) ?? 9999) < nowMin - 5;
+    const passed = isToday && (timeToMin(r.crossing) ?? 9999) < nowMin - 5;
     if (!passed) { nextTrainKey = `${r.dir}-${r.train}-${i}`; break; }
   }
 
@@ -202,7 +224,7 @@ export default function App() {
       const top = container.scrollTop + rowRect.top - containerRect.top - 24;
       container.scrollTo({ top, behavior: "smooth" });
     }
-  }, [day, dir, nextTrainKey]);
+  }, [selectedDate, dir, nextTrainKey]);
 
   // Color scheme based on dark/light mode
   const colors = isDarkMode ? {
@@ -274,6 +296,43 @@ export default function App() {
           border-color: ${colors.textMuted};
           color: ${colors.text};
         }
+        .date-btn {
+          flex: 0 0 auto;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2px;
+          padding: 6px 10px;
+          border: 1.5px solid ${colors.border};
+          background: transparent;
+          color: ${colors.textMuted};
+          font-family: 'DM Mono', monospace;
+          cursor: pointer;
+          transition: all 0.15s;
+          border-radius: 4px;
+          min-width: 64px;
+        }
+        .date-btn .date-btn-label {
+          font-size: 11px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+        .date-btn .date-btn-sub {
+          font-size: 9px;
+          letter-spacing: 0.05em;
+          color: ${colors.textDim};
+        }
+        .date-btn.active {
+          background: ${colors.accent};
+          color: ${colors.bg};
+          border-color: ${colors.accent};
+          font-weight: 500;
+        }
+        .date-btn.active .date-btn-sub { color: ${colors.bg}; opacity: 0.75; }
+        .date-btn:hover:not(.active) {
+          border-color: ${colors.textMuted};
+          color: ${colors.text};
+        }
         .row-out { border-left: 3px solid ${colors.outbound}; }
         .row-in  { border-left: 3px solid ${colors.inbound}; }
         .row-out:hover, .row-in:hover { background: ${colors.rowHoverBg}; }
@@ -328,7 +387,7 @@ export default function App() {
         <div style={{ fontSize: "10px", color: colors.textDim, marginTop: "6px", letterSpacing: "0.05em" }}>
           Between Porter Square & North Station
         </div>
-        {getHolidayNote() && (
+        {getHolidayNote(selectedDate) && (
           <div style={{
             display: "inline-block",
             marginTop: "8px",
@@ -341,25 +400,38 @@ export default function App() {
             letterSpacing: "0.08em",
             textTransform: "uppercase",
           }}>
-            🎉 {getHolidayNote()} — Weekend Schedule
+            🎉 {getHolidayNote(selectedDate)} — Weekend Schedule
           </div>
         )}
         <div style={{ marginBottom: "16px" }} />
 
-        {/* Day toggle */}
-        <div style={{ display: "flex", gap: "0", marginBottom: "12px" }}>
-          <button
-            className={`tab-btn ${day === "weekday" ? "active" : ""}`}
-            style={{ borderRadius: "4px 0 0 4px" }}
-            onClick={() => setDay("weekday")}>
-            Weekday{todayType === "weekday" && <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: day === "weekday" ? colors.bg : colors.accent, marginLeft: 6, verticalAlign: "middle", marginBottom: 1 }} />}
-          </button>
-          <button
-            className={`tab-btn ${day === "weekend" ? "active" : ""}`}
-            style={{ borderRadius: "0 4px 4px 0", borderLeft: "none" }}
-            onClick={() => setDay("weekend")}>
-            Weekend{todayType === "weekend" && <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: day === "weekend" ? colors.bg : colors.accent, marginLeft: 6, verticalAlign: "middle", marginBottom: 1 }} />}
-          </button>
+        {/* Date strip */}
+        <div style={{
+          display: "flex",
+          gap: "6px",
+          marginBottom: "12px",
+          overflowX: "auto",
+          paddingBottom: "2px",
+          WebkitOverflowScrolling: "touch",
+        }}>
+          {AVAILABLE_DATES.map((d) => {
+            const active = d === selectedDate;
+            const isHoliday = !!MBTA_HOLIDAYS[d];
+            return (
+              <button
+                key={d}
+                className={`date-btn ${active ? "active" : ""}`}
+                onClick={() => setSelectedDate(d)}
+                title={isHoliday ? MBTA_HOLIDAYS[d] : undefined}
+              >
+                <span className="date-btn-label">{formatDateLabel(d, todayStr)}</span>
+                <span className="date-btn-sub">
+                  {formatDateSub(d)}
+                  {isHoliday && <span style={{ marginLeft: 4 }}>🎉</span>}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Direction toggle */}
@@ -413,7 +485,7 @@ export default function App() {
         {(() => {
           let attachedRef = false;
           return allRows.map((row, i) => {
-            const passed = day === todayType && (timeToMin(row.crossing) ?? 9999) < nowMin - 5;
+            const passed = isToday && (timeToMin(row.crossing) ?? 9999) < nowMin - 5;
             const isNext = !passed && !attachedRef;
             if (isNext) attachedRef = true;
             return (
@@ -475,7 +547,7 @@ export default function App() {
         letterSpacing: "0.04em",
       }}>
         <div>
-          ⚠ Crossing times are <em>estimated</em> — ~{OUTBOUND_CROSSING_OFFSET} min before Porter (outbound) or ~{INBOUND_CROSSING_OFFSET} min after Porter (inbound). Schedule auto-updated weekly from the MBTA API (last: {LAST_UPDATED}); rows with a <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: "#5dd86b", verticalAlign: "middle" }} /> show live predictions. Always check <a href="https://www.mbta.com/schedules/CR-Fitchburg" target="_blank" rel="noopener noreferrer" style={{ color: colors.accent, textDecoration: "none" }}>mbta.com</a> for alerts & delays.
+          ⚠ Crossing times are <em>estimated</em> — ~{OUTBOUND_CROSSING_OFFSET} min before Porter (outbound) or ~{INBOUND_CROSSING_OFFSET} min after Porter (inbound). Schedule auto-updated daily from the MBTA API (last: {LAST_UPDATED}); rows with a <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: "#5dd86b", verticalAlign: "middle" }} /> show live predictions. Always check <a href="https://www.mbta.com/schedules/CR-Fitchburg" target="_blank" rel="noopener noreferrer" style={{ color: colors.accent, textDecoration: "none" }}>mbta.com</a> for alerts & delays.
         </div>
         <div style={{ marginTop: "6px" }}>
           <a href="https://github.com/orn688/train-timetable" target="_blank" rel="noopener noreferrer" style={{ color: colors.accent, textDecoration: "none" }}>source on GitHub ↗</a>

@@ -2,8 +2,8 @@ name: Update Train Schedule
 
 on:
   schedule:
-    # Run every Monday at 2 AM UTC
-    - cron: '0 2 * * 1'
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
   workflow_dispatch: # Allow manual trigger
 
 permissions:
