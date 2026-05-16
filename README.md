@@ -14,7 +14,7 @@ A real-time train timetable web app for the MBTA Fitchburg Line, showing crossin
 
 ### Prerequisites
 
-- Node.js (v16 or higher)
+- Node.js (v18 or higher)
 - npm or yarn
 
 ### Installation
@@ -103,7 +103,7 @@ If you need to trigger a deployment manually (e.g., after config changes):
 
 ### Important Notes
 
-- **Schedule data is automatically updated weekly** via GitHub Actions (every Monday at 2 AM UTC)
+- **Schedule data is automatically updated daily** via GitHub Actions (every day at 2 AM UTC)
 - If you need to manually update schedules, run: `node scripts/update-schedule.js`
 - If you change the repository name, update the `base` in `vite.config.js` to match `/your-new-repo-name/`
 - The app uses MBTA schedule data fetched from their public API
