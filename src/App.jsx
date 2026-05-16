@@ -332,6 +332,13 @@ export default function App() {
           border-color: ${colors.textMuted};
           color: ${colors.text};
         }
+        .date-strip {
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        .date-strip::-webkit-scrollbar {
+          display: none;
+        }
         .row-out { border-left: 3px solid ${colors.outbound}; }
         .row-in  { border-left: 3px solid ${colors.inbound}; }
         .row-out:hover, .row-in:hover { background: ${colors.rowHoverBg}; }
@@ -405,7 +412,7 @@ export default function App() {
         <div style={{ marginBottom: "16px" }} />
 
         {/* Date strip */}
-        <div style={{
+        <div className="date-strip" style={{
           display: "flex",
           gap: "6px",
           marginBottom: "12px",
