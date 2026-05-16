@@ -29,6 +29,14 @@ const formatDateSub = (dateStr) => {
 const OUTBOUND_CROSSING_OFFSET = 2; // minutes before Porter
 const INBOUND_CROSSING_OFFSET = 5; // minutes after Porter (inc. stop time + slower approach)
 
+// Header scroll-shadow geometry. The shadow's visible reach below the header
+// is HEADER_SHADOW_Y + HEADER_SHADOW_BLUR; the fade-in distance is tied to
+// that same value so changing either dimension keeps them in sync.
+const HEADER_SHADOW_Y = 8;
+const HEADER_SHADOW_BLUR = 24;
+const HEADER_SHADOW_SPREAD = 8;
+const HEADER_SHADOW_FADE_DISTANCE = HEADER_SHADOW_Y + HEADER_SHADOW_BLUR;
+
 const addMinutes = (timeStr, mins) => {
   if (!timeStr) return null;
   const isPM_label = timeStr.includes("PM");
@@ -169,7 +177,7 @@ export default function App() {
     };
   }, [isToday]);
 
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const nextTrainRef = useRef(null);
   const headerRef = useRef(null);
   const scrollContainerRef = useRef(null);
@@ -177,7 +185,10 @@ export default function App() {
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
-    const onScroll = () => setIsScrolled(container.scrollTop > 0);
+    const onScroll = () => {
+      const p = Math.min(1, Math.max(0, container.scrollTop / HEADER_SHADOW_FADE_DISTANCE));
+      setScrollProgress(p);
+    };
     container.addEventListener("scroll", onScroll);
     return () => container.removeEventListener("scroll", onScroll);
   }, []);
@@ -226,6 +237,7 @@ export default function App() {
   }, [selectedDate, nextTrainKey]);
 
   // Color scheme based on dark/light mode
+  const bgRgb = isDarkMode ? "15, 17, 23" : "255, 255, 255";
   const colors = isDarkMode ? {
     bg: "#0f1117",
     bgSecondary: "#16191f",
@@ -352,7 +364,7 @@ export default function App() {
         background: colors.bg,
         padding: "24px 16px 0",
         zIndex: 10,
-        boxShadow: isScrolled ? `0 8px 24px 8px ${colors.bg}` : "none",
+        boxShadow: `0 ${HEADER_SHADOW_Y}px ${HEADER_SHADOW_BLUR}px ${HEADER_SHADOW_SPREAD}px rgba(${bgRgb}, ${scrollProgress})`,
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div style={{
