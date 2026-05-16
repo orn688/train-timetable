@@ -411,13 +411,16 @@ export default function App() {
         )}
         <div style={{ marginBottom: "16px" }} />
 
-        {/* Date strip */}
+        {/* Date strip — outer wrapper clips the scrollbar that the inner
+            element pushes below the fold via padding + negative margin. */}
+        <div style={{ overflow: "hidden", marginBottom: "12px" }}>
         <div className="date-strip" style={{
           display: "flex",
           gap: "6px",
-          marginBottom: "12px",
           overflowX: "auto",
-          paddingBottom: "2px",
+          overflowY: "hidden",
+          paddingBottom: "20px",
+          marginBottom: "-20px",
           WebkitOverflowScrolling: "touch",
         }}>
           {AVAILABLE_DATES.map((d) => {
@@ -438,6 +441,7 @@ export default function App() {
               </button>
             );
           })}
+        </div>
         </div>
 
         {/* Legend */}
