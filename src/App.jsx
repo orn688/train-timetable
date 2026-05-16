@@ -49,6 +49,11 @@ const addMinutes = (timeStr, mins) => {
 
 const getLocalDateStr = () => {
   const now = new Date();
+  // Times before 4 AM belong to the previous service day, matching the
+  // 4 AM cutoff used by nowMin and timeToMin. This keeps the displayed day
+  // from rolling over at midnight while the schedule still shows the prior
+  // day's late-night trains.
+  now.setHours(now.getHours() - 4);
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, "0");
   const d = String(now.getDate()).padStart(2, "0");
@@ -105,7 +110,7 @@ export default function App() {
   const initialDate = AVAILABLE_DATES.includes(todayStr) ? todayStr : AVAILABLE_DATES[0];
   const [selectedDate, setSelectedDate] = useState(initialDate);
 
-  // Keep todayStr fresh in case the page sits open past midnight.
+  // Keep todayStr fresh in case the page sits open past the 4 AM rollover.
   useEffect(() => {
     const interval = setInterval(() => {
       const newToday = getLocalDateStr();
