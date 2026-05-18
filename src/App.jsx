@@ -227,14 +227,19 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (nextTrainRef.current && scrollContainerRef.current) {
-      const container = scrollContainerRef.current;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    if (nextTrainRef.current) {
       const rowRect = nextTrainRef.current.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
       const top = container.scrollTop + rowRect.top - containerRect.top - 24;
       container.scrollTo({ top, behavior: "smooth" });
+    } else if (isToday && allRows.length > 0) {
+      // Every train for today has already passed — show the end of the list
+      // instead of leaving the view stuck at the top.
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
     }
-  }, [selectedDate, nextTrainKey]);
+  }, [selectedDate, nextTrainKey, isToday]);
 
   // Color scheme based on dark/light mode
   const bgRgb = isDarkMode ? "15, 17, 23" : "255, 255, 255";
