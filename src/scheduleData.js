@@ -2,80 +2,10 @@
 // This file is automatically updated daily by GitHub Actions.
 // Each entry under SCHEDULES is the Porter Square schedule for that specific date.
 
-export const LAST_UPDATED = "2026-05-17";
+export const LAST_UPDATED = "2026-05-18";
 
 // Per-date Porter Square schedules (from MBTA /schedules?filter[date]=...)
 export const SCHEDULES = {
-  "2026-05-17": {
-    outbound: [
-      {
-        "train": "5407",
-        "porter": "7:55 AM"
-      },
-      {
-        "train": "5413",
-        "porter": "10:25 AM"
-      },
-      {
-        "train": "5417",
-        "porter": "12:25 PM"
-      },
-      {
-        "train": "5421",
-        "porter": "2:25 PM"
-      },
-      {
-        "train": "5427",
-        "porter": "4:25 PM"
-      },
-      {
-        "train": "5435",
-        "porter": "6:25 PM"
-      },
-      {
-        "train": "5441",
-        "porter": "8:50 PM"
-      },
-      {
-        "train": "5447",
-        "porter": "11:50 PM"
-      }
-    ],
-    inbound: [
-      {
-        "train": "5402",
-        "porter": "6:22 AM"
-      },
-      {
-        "train": "5412",
-        "porter": "9:22 AM"
-      },
-      {
-        "train": "5418",
-        "porter": "11:47 AM"
-      },
-      {
-        "train": "5422",
-        "porter": "1:47 PM"
-      },
-      {
-        "train": "5426",
-        "porter": "3:47 PM"
-      },
-      {
-        "train": "5434",
-        "porter": "5:47 PM"
-      },
-      {
-        "train": "5438",
-        "porter": "7:47 PM"
-      },
-      {
-        "train": "5444",
-        "porter": "10:17 PM"
-      }
-    ],
-  },
   "2026-05-18": {
     outbound: [
       {
@@ -867,6 +797,76 @@ export const SCHEDULES = {
     ],
   },
   "2026-05-23": {
+    outbound: [
+      {
+        "train": "5407",
+        "porter": "7:55 AM"
+      },
+      {
+        "train": "5413",
+        "porter": "10:25 AM"
+      },
+      {
+        "train": "5417",
+        "porter": "12:25 PM"
+      },
+      {
+        "train": "5421",
+        "porter": "2:25 PM"
+      },
+      {
+        "train": "5427",
+        "porter": "4:25 PM"
+      },
+      {
+        "train": "5435",
+        "porter": "6:25 PM"
+      },
+      {
+        "train": "5441",
+        "porter": "8:50 PM"
+      },
+      {
+        "train": "5447",
+        "porter": "11:50 PM"
+      }
+    ],
+    inbound: [
+      {
+        "train": "5402",
+        "porter": "6:22 AM"
+      },
+      {
+        "train": "5412",
+        "porter": "9:22 AM"
+      },
+      {
+        "train": "5418",
+        "porter": "11:47 AM"
+      },
+      {
+        "train": "5422",
+        "porter": "1:47 PM"
+      },
+      {
+        "train": "5426",
+        "porter": "3:47 PM"
+      },
+      {
+        "train": "5434",
+        "porter": "5:47 PM"
+      },
+      {
+        "train": "5438",
+        "porter": "7:47 PM"
+      },
+      {
+        "train": "5444",
+        "porter": "10:17 PM"
+      }
+    ],
+  },
+  "2026-05-24": {
     outbound: [
       {
         "train": "5407",
