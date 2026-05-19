@@ -193,6 +193,8 @@ export default function App() {
     return () => container.removeEventListener("scroll", onScroll);
   }, []);
 
+  const arrowStyle = { fontWeight: 600, fontSize: "22px", lineHeight: 1, transform: "translateY(-4px)" };
+
   const dayData = SCHEDULES[selectedDate];
   const outboundData = dayData?.outbound ?? [];
   const inboundData = dayData?.inbound ?? [];
@@ -209,8 +211,8 @@ export default function App() {
       direction,
     };
   });
-  const outboundRows = decorate(outboundData, -OUTBOUND_CROSSING_OFFSET, "→ Wachusett");
-  const inboundRows = decorate(inboundData, INBOUND_CROSSING_OFFSET, "→ North Station");
+  const outboundRows = decorate(outboundData, -OUTBOUND_CROSSING_OFFSET, "Wachusett");
+  const inboundRows = decorate(inboundData, INBOUND_CROSSING_OFFSET, "North Station");
 
   const allRows = [
     ...outboundRows.map(r => ({ ...r, dir: "out" })),
@@ -462,14 +464,14 @@ export default function App() {
         </div>
 
         {/* Legend */}
-        <div style={{ display: "flex", gap: "16px", marginBottom: "12px", fontSize: "10px", letterSpacing: "0.1em" }}>
+        <div style={{ display: "flex", gap: "24px", marginBottom: "12px", fontSize: "10px", letterSpacing: "0.1em" }}>
           <span style={{ display: "flex", alignItems: "center", gap: "6px", color: colors.text }}>
-            <span style={{ width: 10, height: 10, background: colors.outbound, borderRadius: 2, display: "inline-block" }} />
-            Outbound → Wachusett
+            <span style={{ ...arrowStyle, color: colors.inbound }}>→</span>
+            Inbound · N Station
           </span>
           <span style={{ display: "flex", alignItems: "center", gap: "6px", color: colors.text }}>
-            <span style={{ width: 10, height: 10, background: colors.inbound, borderRadius: 2, display: "inline-block" }} />
-            Inbound → N Station
+            <span style={{ ...arrowStyle, color: colors.outbound }}>←</span>
+            Outbound · Wachusett
           </span>
         </div>
 
@@ -534,8 +536,17 @@ export default function App() {
                     }} />
                     {row.crossing}
                   </span>
-                  <span style={{ fontSize: "10px", color: row.cancelled ? "#e0524b" : colors.textMuted, letterSpacing: "0.08em", alignSelf: "center", fontWeight: row.cancelled ? 600 : "normal" }}>
-                    {row.cancelled ? "CANCELLED" : row.direction}
+                  <span style={{ display: "flex", alignItems: "center", gap: "8px", alignSelf: "center" }}>
+                    <span aria-hidden="true" style={{
+                      ...arrowStyle,
+                      color: row.dir === "out" ? colors.outbound : colors.inbound,
+                      opacity: row.cancelled ? 0.55 : 1,
+                    }}>
+                      {row.dir === "out" ? "←" : "→"}
+                    </span>
+                    <span style={{ fontSize: "10px", color: row.cancelled ? "#e0524b" : colors.textMuted, letterSpacing: "0.08em", fontWeight: row.cancelled ? 600 : "normal" }}>
+                      {row.cancelled ? "CANCELLED" : row.direction}
+                    </span>
                   </span>
                   <span style={{ fontSize: "10px", color: colors.textDim, textAlign: "right", alignSelf: "center", letterSpacing: "0.05em" }}>
                     #{row.train}
