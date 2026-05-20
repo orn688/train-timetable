@@ -644,7 +644,11 @@ export default function App() {
                 gridTemplateColumns: wide ? "auto 1fr auto" : "auto auto 1fr",
                 alignItems: "center",
                 gap: "8px",
-                padding: "0 10px",
+                // padding-left budgets space for the absolute-positioned
+                // triangle (0–8 px) and live-prediction dot (12–18 px), with
+                // matching 4 px gaps on either side of the dot, so the time
+                // text starts cleanly at 22 px.
+                padding: "0 10px 0 22px",
                 background: "transparent",
                 borderRadius: "0 4px 4px 0",
                 transition: "background 0.12s, opacity 0.4s",
@@ -667,6 +671,18 @@ export default function App() {
                 borderRight: `8px solid ${row.dir === "out" ? colors.outbound : colors.inbound}`,
                 opacity: row.cancelled ? 0.55 : 1,
               }} />
+              {row.isLive && !row.cancelled && (
+                <span title="Live prediction" style={{
+                  position: "absolute",
+                  left: 12,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: "#5dd86b",
+                }} />
+              )}
               <span style={{
                 fontSize: wide ? "15px" : "13px",
                 fontWeight: "500",
@@ -677,15 +693,6 @@ export default function App() {
                 opacity: row.cancelled ? 0.55 : 1,
                 fontVariantNumeric: "tabular-nums",
               }}>
-                <span title={row.isLive && !row.cancelled ? "Live prediction" : undefined} style={{
-                  display: "inline-block",
-                  width: 6,
-                  height: 6,
-                  borderRadius: "50%",
-                  background: row.isLive && !row.cancelled ? "#5dd86b" : "transparent",
-                  marginRight: 6,
-                  verticalAlign: "middle",
-                }} />
                 {wide ? row.crossing : row.crossing.replace(/ (AM|PM)$/, "")}
               </span>
               {wide ? (
