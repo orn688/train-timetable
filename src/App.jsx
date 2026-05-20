@@ -37,6 +37,21 @@ const HEADER_SHADOW_BLUR = 24;
 const HEADER_SHADOW_SPREAD = 8;
 const HEADER_SHADOW_FADE_DISTANCE = HEADER_SHADOW_Y + HEADER_SHADOW_BLUR;
 
+// Time-axis layout. PX_PER_MIN sets the vertical scale: 5 min apart trains
+// sit 5*PX_PER_MIN px apart. ROW_HEIGHT is the rendered row height; rows that
+// would overlap at the time-true position get pushed into side-by-side lanes.
+const PX_PER_MIN = 4;
+const ROW_HEIGHT = 34;
+const LANE_GAP = 4;
+const AXIS_WIDTH = 56;
+
+const formatHourLabel = (totalMin) => {
+  const h = Math.floor(totalMin / 60) % 24;
+  const display12 = h % 12 === 0 ? 12 : h % 12;
+  const ampm = h < 12 ? "am" : "pm";
+  return `${display12}${ampm}`;
+};
+
 const addMinutes = (timeStr, mins) => {
   if (!timeStr) return null;
   const isPM_label = timeStr.includes("PM");
@@ -218,6 +233,59 @@ export default function App() {
     ...outboundRows.map(r => ({ ...r, dir: "out" })),
     ...inboundRows.map(r => ({ ...r, dir: "in" })),
   ].sort((a, b) => (timeToMin(a.crossing) ?? 9999) - (timeToMin(b.crossing) ?? 9999));
+
+  // Compute vertical positions on the time axis. Rows that would overlap at
+  // their true-time position get assigned to side-by-side lanes; the layout
+  // grows numLanes wide whenever a conflict appears.
+  const rowsWithTime = allRows
+    .map((r, idx) => ({ row: r, idx, t: timeToMin(r.crossing) }))
+    .filter(x => x.t != null);
+  const firstTime = rowsWithTime.length ? rowsWithTime[0].t : 0;
+  const lastTime = rowsWithTime.length ? rowsWithTime[rowsWithTime.length - 1].t : 0;
+  const startMin = Math.floor(firstTime / 60) * 60;
+  const endMin = Math.ceil((lastTime + 1) / 60) * 60;
+  const axisHeight = Math.max(ROW_HEIGHT, (endMin - startMin) * PX_PER_MIN + ROW_HEIGHT);
+
+  // Two-pass lane assignment. First, greedily assign each row to the lowest
+  // lane whose previous row finished before this row starts. Then group rows
+  // into overlap "clusters" (chains where each adjacent pair is too close
+  // vertically) and stamp every row in a cluster with the cluster's lane
+  // count, so a single conflict only narrows the rows actually in that
+  // conflict — not every row in the day.
+  const laneNextFreeTop = [];
+  const positionedRows = rowsWithTime.map(({ row, idx, t }) => {
+    const top = (t - startMin) * PX_PER_MIN;
+    let lane = 0;
+    while (laneNextFreeTop[lane] != null && top < laneNextFreeTop[lane]) lane++;
+    laneNextFreeTop[lane] = top + ROW_HEIGHT + LANE_GAP;
+    return { row, idx, t, top, lane, clusterLanes: 1 };
+  });
+
+  if (positionedRows.length > 0) {
+    let cluster = [positionedRows[0]];
+    const clusters = [cluster];
+    for (let i = 1; i < positionedRows.length; i++) {
+      const cur = positionedRows[i];
+      const prev = positionedRows[i - 1];
+      if (cur.top - prev.top < ROW_HEIGHT + LANE_GAP) {
+        cluster.push(cur);
+      } else {
+        cluster = [cur];
+        clusters.push(cluster);
+      }
+    }
+    for (const c of clusters) {
+      const lanes = Math.max(...c.map(r => r.lane)) + 1;
+      for (const r of c) r.clusterLanes = lanes;
+    }
+  }
+
+  const hourTicks = [];
+  for (let m = startMin; m <= endMin; m += 60) hourTicks.push(m);
+
+  const nowOnAxis = isToday && nowMin >= startMin && nowMin <= endMin
+    ? (nowMin - startMin) * PX_PER_MIN
+    : null;
 
   // Identify the "next" non-passed row so the auto-scroll effect can re-fire
   // when predictions push the previously-passed train back into the future.
@@ -475,68 +543,125 @@ export default function App() {
           </span>
         </div>
 
-        {/* Table header */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "108px 1fr 80px",
-          padding: "8px 12px",
-          fontSize: "9px",
-          letterSpacing: "0.15em",
-          color: colors.textDim,
-          textTransform: "uppercase",
-          borderBottom: `1px solid ${colors.borderSubtle}`,
-        }}>
-          <span>ETA</span>
-          <span>Direction</span>
-          <span style={{ textAlign: "right" }}>Train #</span>
-        </div>
       </div>
 
       {/* Scrollable rows + footer */}
       <div ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", padding: "4px 16px 24px", background: colors.bg }}>
-      {/* Rows */}
-      <div>
-        {(() => {
-          let attachedRef = false;
-          return allRows.map((row, i) => {
-            const passed = isToday && (timeToMin(row.crossing) ?? 9999) < nowMin - 5;
-            const isNext = !passed && !attachedRef;
-            if (isNext) attachedRef = true;
-            return (
-                <div key={`${row.train}-${i}`}
-                  ref={isNext ? nextTrainRef : null}
-                  className={`fade-row ${row.dir === "out" ? "row-out" : "row-in"}`}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "108px 1fr 80px",
-                    padding: "11px 12px",
-                    marginBottom: "3px",
-                    borderRadius: "0 4px 4px 0",
-                    transition: "background 0.12s, opacity 0.4s",
-                    animationDelay: `${i * 18}ms`,
-                    opacity: passed ? 0.25 : 1,
-                  }}>
-                  <span style={{
-                    fontSize: "16px",
-                    fontWeight: "500",
-                    color: row.dir === "out" ? colors.outbound : colors.inbound,
-                    letterSpacing: "0.02em",
-                    whiteSpace: "nowrap",
-                    textDecoration: row.cancelled ? "line-through" : "none",
-                    opacity: row.cancelled ? 0.55 : 1,
-                  }}>
-                    <span title={row.isLive && !row.cancelled ? "Live prediction" : undefined} style={{
-                      display: "inline-block",
-                      width: 6,
-                      height: 6,
-                      borderRadius: "50%",
-                      background: row.isLive && !row.cancelled ? "#5dd86b" : "transparent",
-                      marginRight: 6,
-                      verticalAlign: "middle",
-                    }} />
-                    {row.crossing}
-                  </span>
-                  <span style={{ display: "flex", alignItems: "center", gap: "8px", alignSelf: "center" }}>
+      {/* Time-axis timeline */}
+      <div style={{
+        position: "relative",
+        height: `${axisHeight}px`,
+      }}>
+        {/* Hour gridlines + labels */}
+        {hourTicks.map((m) => {
+          const top = (m - startMin) * PX_PER_MIN;
+          return (
+            <div key={`tick-${m}`} style={{
+              position: "absolute",
+              top: `${top}px`,
+              left: `${AXIS_WIDTH - 6}px`,
+              right: 0,
+              height: 0,
+              borderTop: `1px dashed ${colors.borderSubtle}`,
+              pointerEvents: "none",
+            }}>
+              <span style={{
+                position: "absolute",
+                right: "100%",
+                top: "-7px",
+                paddingRight: "8px",
+                fontSize: "10px",
+                letterSpacing: "0.08em",
+                color: colors.textDim,
+                fontVariantNumeric: "tabular-nums",
+              }}>
+                {formatHourLabel(m)}
+              </span>
+            </div>
+          );
+        })}
+
+        {/* Now indicator */}
+        {nowOnAxis != null && (
+          <div style={{
+            position: "absolute",
+            top: `${nowOnAxis}px`,
+            left: `${AXIS_WIDTH - 6}px`,
+            right: 0,
+            height: 0,
+            borderTop: `1.5px solid ${colors.accent}`,
+            pointerEvents: "none",
+            zIndex: 3,
+          }}>
+            <span style={{
+              position: "absolute",
+              right: 0,
+              top: "-7px",
+              fontSize: "9px",
+              letterSpacing: "0.12em",
+              color: colors.accent,
+              background: colors.bg,
+              paddingLeft: "6px",
+              textTransform: "uppercase",
+            }}>
+              now
+            </span>
+          </div>
+        )}
+
+        {/* Train rows */}
+        {positionedRows.map(({ row, idx, top, lane, clusterLanes }) => {
+          const passed = isToday && (timeToMin(row.crossing) ?? 9999) < nowMin - 5;
+          const isNext = !passed && nextTrainKey === `${row.dir}-${row.train}-${idx}`;
+          const wide = clusterLanes === 1;
+          const laneOffset = `calc(${lane} * (100% - ${AXIS_WIDTH}px) / ${clusterLanes})`;
+          const laneWidth = `calc((100% - ${AXIS_WIDTH}px) / ${clusterLanes} - ${wide ? 0 : LANE_GAP}px)`;
+          return (
+            <div key={`${row.train}-${idx}`}
+              ref={isNext ? nextTrainRef : null}
+              className={`fade-row ${row.dir === "out" ? "row-out" : "row-in"}`}
+              style={{
+                position: "absolute",
+                top: `${top}px`,
+                left: `calc(${AXIS_WIDTH}px + ${laneOffset})`,
+                width: laneWidth,
+                height: `${ROW_HEIGHT}px`,
+                display: "grid",
+                gridTemplateColumns: wide ? "auto 1fr auto" : "auto auto 1fr",
+                alignItems: "center",
+                gap: "8px",
+                padding: "0 10px",
+                background: colors.bg,
+                borderRadius: "0 4px 4px 0",
+                transition: "background 0.12s, opacity 0.4s",
+                animationDelay: `${idx * 18}ms`,
+                opacity: passed ? 0.25 : 1,
+                zIndex: 2,
+              }}>
+              <span style={{
+                fontSize: wide ? "15px" : "13px",
+                fontWeight: "500",
+                color: row.dir === "out" ? colors.outbound : colors.inbound,
+                letterSpacing: "0.02em",
+                whiteSpace: "nowrap",
+                textDecoration: row.cancelled ? "line-through" : "none",
+                opacity: row.cancelled ? 0.55 : 1,
+                fontVariantNumeric: "tabular-nums",
+              }}>
+                <span title={row.isLive && !row.cancelled ? "Live prediction" : undefined} style={{
+                  display: "inline-block",
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: row.isLive && !row.cancelled ? "#5dd86b" : "transparent",
+                  marginRight: 6,
+                  verticalAlign: "middle",
+                }} />
+                {wide ? row.crossing : row.crossing.replace(/ (AM|PM)$/, "")}
+              </span>
+              {wide ? (
+                <>
+                  <span style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
                     <span aria-hidden="true" style={{
                       ...arrowStyle,
                       color: row.dir === "out" ? colors.outbound : colors.inbound,
@@ -544,18 +669,33 @@ export default function App() {
                     }}>
                       {row.dir === "out" ? "←" : "→"}
                     </span>
-                    <span style={{ fontSize: "10px", color: row.cancelled ? "#e0524b" : colors.textMuted, letterSpacing: "0.08em", fontWeight: row.cancelled ? 600 : "normal" }}>
+                    <span style={{ fontSize: "10px", color: row.cancelled ? "#e0524b" : colors.textMuted, letterSpacing: "0.08em", fontWeight: row.cancelled ? 600 : "normal", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {row.cancelled ? "CANCELLED" : row.direction}
                     </span>
                   </span>
-                  <span style={{ fontSize: "10px", color: colors.textDim, textAlign: "right", alignSelf: "center", letterSpacing: "0.05em" }}>
+                  <span style={{ fontSize: "10px", color: colors.textDim, textAlign: "right", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>
                     #{row.train}
                   </span>
-                </div>
-              );
-            });
-          })()}
-        </div>
+                </>
+              ) : (
+                <>
+                  <span aria-hidden="true" style={{
+                    ...arrowStyle,
+                    fontSize: "18px",
+                    color: row.dir === "out" ? colors.outbound : colors.inbound,
+                    opacity: row.cancelled ? 0.55 : 1,
+                  }}>
+                    {row.dir === "out" ? "←" : "→"}
+                  </span>
+                  <span style={{ fontSize: "10px", color: row.cancelled ? "#e0524b" : colors.textDim, textAlign: "right", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>
+                    {row.cancelled ? "CANC" : `#${row.train}`}
+                  </span>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
       </div>
 
       {/* Footer note */}
