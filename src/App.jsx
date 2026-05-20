@@ -40,7 +40,7 @@ const HEADER_SHADOW_FADE_DISTANCE = HEADER_SHADOW_Y + HEADER_SHADOW_BLUR;
 // Time-axis layout. PX_PER_MIN sets the vertical scale: 5 min apart trains
 // sit 5*PX_PER_MIN px apart. ROW_HEIGHT is the rendered row height; rows that
 // would overlap at the time-true position get pushed into side-by-side lanes.
-const PX_PER_MIN = 4;
+const PX_PER_MIN = 2.4;
 const ROW_HEIGHT = 34;
 const LANE_GAP = 4;
 const AXIS_WIDTH = 56;
@@ -281,7 +281,7 @@ export default function App() {
   }
 
   const hourTicks = [];
-  for (let m = startMin; m <= endMin; m += 60) hourTicks.push(m);
+  for (let m = startMin; m <= endMin; m += 30) hourTicks.push(m);
 
   const nowOnAxis = isToday && nowMin >= startMin && nowMin <= endMin
     ? (nowMin - startMin) * PX_PER_MIN
@@ -299,7 +299,12 @@ export default function App() {
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
-    if (nextTrainRef.current) {
+    if (isToday && nowOnAxis != null) {
+      // Today with a "now" line in range: anchor the now line ~80px below
+      // the top of the viewport so the user sees a little past context and
+      // the rest of the day below.
+      container.scrollTo({ top: Math.max(0, nowOnAxis - 80), behavior: "smooth" });
+    } else if (nextTrainRef.current) {
       const rowRect = nextTrainRef.current.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
       const top = container.scrollTop + rowRect.top - containerRect.top - 24;
@@ -552,31 +557,36 @@ export default function App() {
         position: "relative",
         height: `${axisHeight}px`,
       }}>
-        {/* Hour gridlines + labels */}
+        {/* Hour + half-hour gridlines. Hour marks get a label and a darker
+            dashed line; half-hour marks are unlabeled and lighter. */}
         {hourTicks.map((m) => {
           const top = (m - startMin) * PX_PER_MIN;
+          const isHour = m % 60 === 0;
           return (
             <div key={`tick-${m}`} style={{
               position: "absolute",
               top: `${top}px`,
-              left: `${AXIS_WIDTH - 6}px`,
+              left: isHour ? `${AXIS_WIDTH - 6}px` : `${AXIS_WIDTH + 2}px`,
               right: 0,
               height: 0,
               borderTop: `1px dashed ${colors.borderSubtle}`,
+              opacity: isHour ? 1 : 0.5,
               pointerEvents: "none",
             }}>
-              <span style={{
-                position: "absolute",
-                right: "100%",
-                top: "-7px",
-                paddingRight: "8px",
-                fontSize: "10px",
-                letterSpacing: "0.08em",
-                color: colors.textDim,
-                fontVariantNumeric: "tabular-nums",
-              }}>
-                {formatHourLabel(m)}
-              </span>
+              {isHour && (
+                <span style={{
+                  position: "absolute",
+                  right: "100%",
+                  top: "-7px",
+                  paddingRight: "8px",
+                  fontSize: "10px",
+                  letterSpacing: "0.08em",
+                  color: colors.textDim,
+                  fontVariantNumeric: "tabular-nums",
+                }}>
+                  {formatHourLabel(m)}
+                </span>
+              )}
             </div>
           );
         })}
@@ -631,7 +641,7 @@ export default function App() {
                 alignItems: "center",
                 gap: "8px",
                 padding: "0 10px",
-                background: colors.bg,
+                background: "transparent",
                 borderRadius: "0 4px 4px 0",
                 transition: "background 0.12s, opacity 0.4s",
                 animationDelay: `${idx * 18}ms`,
