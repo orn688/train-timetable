@@ -283,8 +283,14 @@ export default function App() {
   const hourTicks = [];
   for (let m = startMin; m <= endMin; m += 30) hourTicks.push(m);
 
+  // The hour grid and the "now" line live ROW_HEIGHT/2 below where the
+  // matching minute-offset would land naively. That offset moves them onto
+  // each row's vertical center — where the row's triangle marker sits — so
+  // a tick on the hour intersects a row exactly at that train's time.
+  const AXIS_Y_OFFSET = ROW_HEIGHT / 2;
+
   const nowOnAxis = isToday && nowMin >= startMin && nowMin <= endMin
-    ? (nowMin - startMin) * PX_PER_MIN
+    ? (nowMin - startMin) * PX_PER_MIN + AXIS_Y_OFFSET
     : null;
 
   // Identify the "next" non-passed row so the auto-scroll effect can re-fire
@@ -431,8 +437,6 @@ export default function App() {
         .date-strip::-webkit-scrollbar {
           display: none;
         }
-        .row-out { border-left: 3px solid ${colors.outbound}; }
-        .row-in  { border-left: 3px solid ${colors.inbound}; }
         .row-out:hover, .row-in:hover { background: ${colors.rowHoverBg}; }
         @keyframes fadeIn { from { transform: translateY(6px); } to { transform: none; } }
         .fade-row { animation: fadeIn 0.2s ease both; }
@@ -560,7 +564,7 @@ export default function App() {
         {/* Hour + half-hour gridlines. Hour marks get a label and a darker
             dashed line; half-hour marks are unlabeled and lighter. */}
         {hourTicks.map((m) => {
-          const top = (m - startMin) * PX_PER_MIN;
+          const top = (m - startMin) * PX_PER_MIN + AXIS_Y_OFFSET;
           const isHour = m % 60 === 0;
           return (
             <div key={`tick-${m}`} style={{
@@ -648,6 +652,21 @@ export default function App() {
                 opacity: passed ? 0.25 : 1,
                 zIndex: 2,
               }}>
+              {/* Time-point marker. Sits at the row's vertical center, which
+                  in turn is anchored to the train's exact crossing time, so
+                  the triangle's tip pins down a single point on the axis. */}
+              <span aria-hidden="true" style={{
+                position: "absolute",
+                left: 0,
+                top: "50%",
+                transform: "translateY(-50%)",
+                width: 0,
+                height: 0,
+                borderTop: "6px solid transparent",
+                borderBottom: "6px solid transparent",
+                borderRight: `8px solid ${row.dir === "out" ? colors.outbound : colors.inbound}`,
+                opacity: row.cancelled ? 0.55 : 1,
+              }} />
               <span style={{
                 fontSize: wide ? "15px" : "13px",
                 fontWeight: "500",
