@@ -18,12 +18,12 @@ const formatDateLabel = (dateStr, todayStr) => {
   const diffDays = Math.round((date - today) / (1000 * 60 * 60 * 24));
   if (diffDays === 0) return "Today";
   if (diffDays === 1) return "Tomorrow";
-  return date.toLocaleDateString(undefined, { weekday: "short" });
+  return date.toLocaleDateString("en-US", { weekday: "short" });
 };
 
 const formatDateSub = (dateStr) => {
   const date = parseLocalDate(dateStr);
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 };
 
 const OUTBOUND_CROSSING_OFFSET = 2; // minutes before Porter
