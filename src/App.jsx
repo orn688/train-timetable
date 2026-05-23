@@ -29,6 +29,10 @@ const formatDateSub = (dateStr) => {
 const OUTBOUND_CROSSING_OFFSET = 2; // minutes before Porter
 const INBOUND_CROSSING_OFFSET = 5; // minutes after Porter (inc. stop time + slower approach)
 
+// After midnight, keep showing the previous service day until this many
+// minutes past its last train, then advance to the new calendar day.
+const LATE_ADVANCE_GRACE = 10;
+
 // Header scroll-shadow geometry. The shadow's visible reach below the header
 // is HEADER_SHADOW_Y + HEADER_SHADOW_BLUR; the fade-in distance is tied to
 // that same value so changing either dimension keeps them in sync.
@@ -97,20 +101,11 @@ const getEasternNow = () => {
   };
 };
 
-const getLocalDateStr = () => {
-  const { year, month, day, hour } = getEasternNow();
-  // Times before 4 AM belong to the previous service day, matching the
-  // 4 AM cutoff used by nowMin and timeToMin. This keeps the displayed day
-  // from rolling over at midnight while the schedule still shows the prior
-  // day's late-night trains. Date arithmetic runs in UTC so the browser's own
-  // timezone can't shift the calendar day.
-  const d = new Date(Date.UTC(year, month - 1, day));
-  if (hour < 4) d.setUTCDate(d.getUTCDate() - 1);
-  const y = d.getUTCFullYear();
-  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(d.getUTCDate()).padStart(2, "0");
-  return `${y}-${mm}-${dd}`;
-};
+// Format a Date's UTC calendar parts as YYYY-MM-DD. We build dates from
+// Eastern Y/M/D in UTC purely for calendar arithmetic, so the browser's own
+// timezone can never shift the day.
+const utcDateStr = (d) =>
+  `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
 
 const getHolidayNote = (dateStr) => MBTA_HOLIDAYS[dateStr] ?? null;
 
@@ -157,24 +152,74 @@ const timeToMin = (t) => {
   return total < 240 ? total + 24 * 60 : total;
 };
 
+// Latest crossing time (in axis minutes) across both directions of a service
+// day's schedule, or null if that day has no schedule. Used to decide when a
+// finished service day should hand off to the next calendar day.
+const lastCrossingMin = (dateStr) => {
+  const day = SCHEDULES[dateStr];
+  if (!day) return null;
+  let max = null;
+  const consider = (rows, offset) => {
+    for (const r of rows ?? []) {
+      const t = timeToMin(addMinutes(r.porter, offset));
+      if (t != null && (max == null || t > max)) max = t;
+    }
+  };
+  consider(day.outbound, -OUTBOUND_CROSSING_OFFSET);
+  consider(day.inbound, INBOUND_CROSSING_OFFSET);
+  return max;
+};
+
+// Resolve, in Somerville (Eastern) time, three things at once:
+//  - calendarStr: the real calendar date (drives the Today/Tomorrow labels)
+//  - activeStr:   the service day to show by default and pin "now" to
+//  - nowMin:      "now" on that service day's axis
+// During the day these coincide. After midnight the previous service day's
+// late-night trains may still be running, so we keep it active until
+// LATE_ADVANCE_GRACE minutes past its last train, then advance to the new
+// calendar day. nowMin is wrapped past 24h only while that tail is active, so
+// once we advance "now" sits before the new day's first train rather than
+// after its (next-night) last one.
+const getNowState = () => {
+  const { year, month, day, hour, minute } = getEasternNow();
+  const raw = hour * 60 + minute;
+  const calD = new Date(Date.UTC(year, month - 1, day));
+  const calendarStr = utcDateStr(calD);
+  let activeStr = calendarStr;
+  let tail = false;
+  if (raw < 240) {
+    const prevD = new Date(calD);
+    prevD.setUTCDate(prevD.getUTCDate() - 1);
+    const prevStr = utcDateStr(prevD);
+    const prevLast = lastCrossingMin(prevStr);
+    const nowWrapped = raw + 24 * 60;
+    if (prevLast != null && nowWrapped <= prevLast + LATE_ADVANCE_GRACE) {
+      activeStr = prevStr;
+      tail = true;
+    }
+  }
+  const nowMin = tail ? raw + 24 * 60 : raw;
+  return { calendarStr, activeStr, nowMin };
+};
+
 export default function App() {
-  const [todayStr, setTodayStr] = useState(getLocalDateStr);
+  const [todayStr, setTodayStr] = useState(() => getNowState().activeStr);
+  const [calendarTodayStr, setCalendarTodayStr] = useState(() => getNowState().calendarStr);
   const initialDate = AVAILABLE_DATES.includes(todayStr) ? todayStr : AVAILABLE_DATES[0];
   const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [nowMin, setNowMin] = useState(() => getNowState().nowMin);
 
-  // Keep todayStr fresh in case the page sits open past the 4 AM rollover.
+  // Refresh the active service day, calendar day, and "now" together so an
+  // open page tracks midnight and the smart-advance handoff.
   useEffect(() => {
     const interval = setInterval(() => {
-      const newToday = getLocalDateStr();
-      setTodayStr((prev) => (prev === newToday ? prev : newToday));
-    }, 60000);
+      const { calendarStr, activeStr, nowMin } = getNowState();
+      setTodayStr((prev) => (prev === activeStr ? prev : activeStr));
+      setCalendarTodayStr((prev) => (prev === calendarStr ? prev : calendarStr));
+      setNowMin(nowMin);
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
-  const [nowMin, setNowMin] = useState(() => {
-    const { hour, minute } = getEasternNow();
-    const total = hour * 60 + minute;
-    return total < 240 ? total + 24 * 60 : total;
-  });
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -185,15 +230,6 @@ export default function App() {
     const handleChange = (e) => setIsDarkMode(e.matches);
     mediaQuery.addEventListener("change", handleChange);
     return () => mediaQuery.removeEventListener("change", handleChange);
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const { hour, minute } = getEasternNow();
-      const total = hour * 60 + minute;
-      setNowMin(total < 240 ? total + 24 * 60 : total);
-    }, 30000); // update every 30 seconds
-    return () => clearInterval(interval);
   }, []);
 
   const isToday = selectedDate === todayStr;
@@ -558,7 +594,7 @@ export default function App() {
                 onClick={() => setSelectedDate(d)}
                 title={isHoliday ? MBTA_HOLIDAYS[d] : undefined}
               >
-                <span className="date-btn-label">{formatDateLabel(d, todayStr)}</span>
+                <span className="date-btn-label">{formatDateLabel(d, calendarTodayStr)}</span>
                 <span className="date-btn-sub">
                   {formatDateSub(d)}
                   {isHoliday && <span style={{ marginLeft: 4 }}>🎉</span>}
