@@ -60,12 +60,22 @@ This creates a `dist/` folder with the production build.
    ```
 
 3. **Enable GitHub Pages**:
-   - Go to your repository settings
-   - Navigate to "Pages"
-   - Set source to "GitHub Actions"
+   - Push to `main` once so the `Deploy to GitHub Pages` workflow runs and creates the `gh-pages` branch
+   - Go to your repository settings → "Pages"
+   - Set source to "Deploy from a branch", branch `gh-pages`, folder `/ (root)`
    - Click "Save"
 
-The site will be automatically deployed when you push to the `main` branch.
+The site is automatically built and published to the root of the `gh-pages`
+branch whenever you push to `main`.
+
+### Pull request previews
+
+Every pull request gets its own preview deployment, built and published to
+`pr-preview/pr-<number>/` on the `gh-pages` branch (e.g.
+`https://<you>.github.io/train-timetable/pr-preview/pr-12/`). A bot comment on
+the PR links to it, and the preview is removed automatically when the PR is
+closed or merged. Previews only run for branches pushed to this repository
+(not for forks).
 
 ### Updating the Site
 
