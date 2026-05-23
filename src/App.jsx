@@ -70,17 +70,46 @@ const addMinutes = (timeStr, mins) => {
   return `${display12}:${String(newM).padStart(2, "0")} ${ampm}`;
 };
 
+// The schedule and MBTA predictions are all in Somerville's local (Eastern)
+// wall-clock time, so "now" must be read in that zone too — otherwise a viewer
+// in another timezone sees the now-line at their own clock time, not the
+// train's. Intl handles the EST/EDT switch for us.
+const getEasternNow = () => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const p = {};
+  for (const part of parts) p[part.type] = part.value;
+  let hour = Number(p.hour);
+  if (hour === 24) hour = 0; // some engines emit "24" for midnight
+  return {
+    year: Number(p.year),
+    month: Number(p.month),
+    day: Number(p.day),
+    hour,
+    minute: Number(p.minute),
+  };
+};
+
 const getLocalDateStr = () => {
-  const now = new Date();
+  const { year, month, day, hour } = getEasternNow();
   // Times before 4 AM belong to the previous service day, matching the
   // 4 AM cutoff used by nowMin and timeToMin. This keeps the displayed day
   // from rolling over at midnight while the schedule still shows the prior
-  // day's late-night trains.
-  now.setHours(now.getHours() - 4);
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  // day's late-night trains. Date arithmetic runs in UTC so the browser's own
+  // timezone can't shift the calendar day.
+  const d = new Date(Date.UTC(year, month - 1, day));
+  if (hour < 4) d.setUTCDate(d.getUTCDate() - 1);
+  const y = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${mm}-${dd}`;
 };
 
 const getHolidayNote = (dateStr) => MBTA_HOLIDAYS[dateStr] ?? null;
@@ -142,8 +171,8 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
   const [nowMin, setNowMin] = useState(() => {
-    const n = new Date();
-    const total = n.getHours() * 60 + n.getMinutes();
+    const { hour, minute } = getEasternNow();
+    const total = hour * 60 + minute;
     return total < 240 ? total + 24 * 60 : total;
   });
 
@@ -160,8 +189,8 @@ export default function App() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const n = new Date();
-      const total = n.getHours() * 60 + n.getMinutes();
+      const { hour, minute } = getEasternNow();
+      const total = hour * 60 + minute;
       setNowMin(total < 240 ? total + 24 * 60 : total);
     }, 30000); // update every 30 seconds
     return () => clearInterval(interval);
