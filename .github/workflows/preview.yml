@@ -9,7 +9,9 @@ on:
 
 permissions:
   contents: write        # push the preview to the gh-pages branch
-  pull-requests: write   # post/update the preview-URL comment
+  pull-requests: write   # update the PR's deployment status
+  deployments: write     # create a GitHub Deployment so the preview URL
+                         # shows up in the PR's "Deployments" sidebar
 
 jobs:
   build:
@@ -80,9 +82,48 @@ jobs:
         # the directory when the PR closes. Leaves the rest of the gh-pages
         # branch (the production site) untouched.
         # `comment: false` suppresses the sticky preview-URL comment so it
-        # doesn't trigger email notifications. The preview URL is still
-        # discoverable via the PR's Deployments sidebar.
+        # doesn't trigger email notifications. The preview URL is surfaced
+        # via the GitHub Deployment created in the next step instead.
         uses: rossjrw/pr-preview-action@v1
         with:
           source-dir: ./dist/
           comment: false
+
+      - name: Record preview deployment
+        # rossjrw/pr-preview-action only pushes to gh-pages — it doesn't
+        # create a GitHub Deployment, so the PR's Deployments sidebar would
+        # otherwise stay empty. Create one ourselves pointing at the preview
+        # URL. On `closed`, mark the environment inactive so the link is
+        # greyed out instead of pointing at a 404.
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_ACTION: ${{ github.event.action }}
+        with:
+          script: |
+            const prNumber = process.env.PR_NUMBER;
+            const environment = `pr-preview-${prNumber}`;
+            const url = `https://orn688.github.io/train-timetable/pr-preview/pr-${prNumber}/`;
+            const isClosed = process.env.PR_ACTION === 'closed';
+
+            const deployment = await github.rest.repos.createDeployment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: process.env.PR_SHA,
+              environment,
+              transient_environment: true,
+              auto_merge: false,
+              required_contexts: [],
+              description: isClosed ? 'Preview removed' : 'Preview deployed',
+            });
+
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: deployment.data.id,
+              state: isClosed ? 'inactive' : 'success',
+              environment_url: isClosed ? undefined : url,
+              log_url: isClosed ? undefined : url,
+              description: isClosed ? 'Preview removed' : 'Preview ready',
+            });
