@@ -76,9 +76,13 @@ jobs:
           path: ./dist
 
       - name: Deploy preview
-        # Publishes ./dist to gh-pages under pr-preview/pr-<N>/, comments the
-        # preview URL on the PR, and removes the directory when the PR closes.
-        # Leaves the rest of the gh-pages branch (the production site) untouched.
+        # Publishes ./dist to gh-pages under pr-preview/pr-<N>/ and removes
+        # the directory when the PR closes. Leaves the rest of the gh-pages
+        # branch (the production site) untouched.
+        # `comment: false` suppresses the sticky preview-URL comment so it
+        # doesn't trigger email notifications. The preview URL is still
+        # discoverable via the PR's Deployments sidebar.
         uses: rossjrw/pr-preview-action@v1
         with:
           source-dir: ./dist/
+          comment: false
