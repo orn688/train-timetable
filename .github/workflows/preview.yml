@@ -11,33 +11,69 @@ permissions:
   contents: write        # push the preview to the gh-pages branch
   pull-requests: write   # post/update the preview-URL comment
 
-# One in-flight deploy per PR; a new push supersedes an older, still-running one.
-concurrency: preview-${{ github.ref }}
-
 jobs:
-  deploy-preview:
+  build:
+    # No build needed when the PR is closing; the publish job just removes
+    # the preview directory.
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
+    # One in-flight build per PR; a new push supersedes an older, still-running
+    # one. Cancellation only affects this cheap build job, not the gh-pages
+    # write in `publish` below.
+    concurrency:
+      group: preview-build-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
       - name: Setup Node.js
-        if: github.event.action != 'closed'
         uses: actions/setup-node@v5
         with:
           node-version: '18'
           cache: 'npm'
 
       - name: Install dependencies
-        if: github.event.action != 'closed'
         run: npm ci
 
       - name: Build
-        if: github.event.action != 'closed'
         # The preview is served from a subpath, so the build's base must match
         # it exactly or the JS/CSS will 404:
         #   https://orn688.github.io/train-timetable/pr-preview/pr-<N>/
         run: npm run build -- --base=/train-timetable/pr-preview/pr-${{ github.event.number }}/
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-dist
+          path: ./dist
+          retention-days: 1
+
+  publish:
+    needs: [build]
+    # Run when build succeeded (open/reopen/synchronize) or when the PR is
+    # closing (build was skipped — we just need to tear down the directory).
+    # Don't run if build was cancelled (a newer push superseded it) or failed.
+    if: |
+      always() &&
+      (github.event.action == 'closed' || needs.build.result == 'success')
+    runs-on: ubuntu-latest
+    # Shared with deploy.yml so any writer to gh-pages serializes. Never
+    # cancel in progress — a half-finished push would leave gh-pages
+    # in an inconsistent state.
+    concurrency:
+      group: gh-pages
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download build artifact
+        if: github.event.action != 'closed'
+        uses: actions/download-artifact@v4
+        with:
+          name: preview-dist
+          path: ./dist
 
       - name: Deploy preview
         # Publishes ./dist to gh-pages under pr-preview/pr-<N>/, comments the

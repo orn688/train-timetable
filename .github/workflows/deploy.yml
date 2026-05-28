@@ -17,11 +17,11 @@ on:
 permissions:
   contents: write
 
-# Serialize production deploys. PR previews use their own per-ref group so a
-# preview and a production deploy can still run alongside each other; both
-# only ever touch their own area of the gh-pages branch.
+# Serialize every workflow that pushes to gh-pages (this one and the preview
+# workflow's publish job) under a single group, so a production deploy and a
+# preview tear-down can't both try to update the branch at the same time.
 concurrency:
-  group: "pages-deploy"
+  group: "gh-pages"
   cancel-in-progress: false
 
 jobs:
