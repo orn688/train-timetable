@@ -37,7 +37,7 @@ jobs:
         if: steps.changes.outputs.has_changes == 'true'
         run: |
           git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/scheduleData.js
           git commit -m "chore: update train schedule from MBTA API"
           git push
