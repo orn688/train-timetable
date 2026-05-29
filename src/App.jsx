@@ -749,7 +749,7 @@ export default function App() {
                 }} />
               )}
               <span style={{
-                fontSize: wide ? "15px" : "13px",
+                fontSize: "15px",
                 fontWeight: "500",
                 color: row.dir === "out" ? colors.outbound : colors.inbound,
                 letterSpacing: "0.02em",
