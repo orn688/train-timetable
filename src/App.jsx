@@ -302,9 +302,9 @@ export default function App() {
     ...inboundRows.map(r => ({ ...r, dir: "in" })),
   ].sort((a, b) => (timeToMin(a.crossing) ?? 9999) - (timeToMin(b.crossing) ?? 9999));
 
-  // Compute vertical positions on the time axis. Rows that would overlap at
-  // their true-time position get assigned to side-by-side lanes; the layout
-  // grows numLanes wide whenever a conflict appears.
+  // Compute vertical positions on the time axis. Direction maps directly to a
+  // fixed two-lane layout: inbound trains always occupy the left column and
+  // outbound the right, rather than being packed by time overlap.
   const rowsWithTime = allRows
     .map((r, idx) => ({ row: r, idx, t: timeToMin(r.crossing) }))
     .filter(x => x.t != null);
@@ -314,39 +314,15 @@ export default function App() {
   const endMin = Math.ceil((lastTime + 1) / 60) * 60;
   const axisHeight = Math.max(ROW_HEIGHT, (endMin - startMin) * PX_PER_MIN + ROW_HEIGHT);
 
-  // Two-pass lane assignment. First, greedily assign each row to the lowest
-  // lane whose previous row finished before this row starts. Then group rows
-  // into overlap "clusters" (chains where each adjacent pair is too close
-  // vertically) and stamp every row in a cluster with the cluster's lane
-  // count, so a single conflict only narrows the rows actually in that
-  // conflict — not every row in the day.
-  const laneNextFreeTop = [];
-  const positionedRows = rowsWithTime.map(({ row, idx, t }) => {
-    const top = (t - startMin) * PX_PER_MIN;
-    let lane = 0;
-    while (laneNextFreeTop[lane] != null && top < laneNextFreeTop[lane]) lane++;
-    laneNextFreeTop[lane] = top + ROW_HEIGHT + LANE_GAP;
-    return { row, idx, t, top, lane, clusterLanes: 1 };
-  });
-
-  if (positionedRows.length > 0) {
-    let cluster = [positionedRows[0]];
-    const clusters = [cluster];
-    for (let i = 1; i < positionedRows.length; i++) {
-      const cur = positionedRows[i];
-      const prev = positionedRows[i - 1];
-      if (cur.top - prev.top < ROW_HEIGHT + LANE_GAP) {
-        cluster.push(cur);
-      } else {
-        cluster = [cur];
-        clusters.push(cluster);
-      }
-    }
-    for (const c of clusters) {
-      const lanes = Math.max(...c.map(r => r.lane)) + 1;
-      for (const r of c) r.clusterLanes = lanes;
-    }
-  }
+  const positionedRows = rowsWithTime.map(({ row, idx, t }) => ({
+    row,
+    idx,
+    t,
+    top: (t - startMin) * PX_PER_MIN,
+    // Inbound → left lane (0), outbound → right lane (1).
+    lane: row.dir === "in" ? 0 : 1,
+    clusterLanes: 2,
+  }));
 
   const hourTicks = [];
   for (let m = startMin; m <= endMin; m += 30) hourTicks.push(m);
@@ -699,11 +675,10 @@ export default function App() {
         {positionedRows.map(({ row, idx, top, lane, clusterLanes }) => {
           const passed = isToday && (timeToMin(row.crossing) ?? 9999) < nowMin - 5;
           const isNext = !passed && nextTrainKey === `${row.dir}-${row.train}-${idx}`;
+          // Fixed two-column layout: inbound (lane 0) fills the left half,
+          // outbound (lane 1) the right half.
           const laneOffset = `calc(${lane} * (100% - ${AXIS_WIDTH}px) / ${clusterLanes})`;
-          // Every chip uses the squashed (≥2-lane) width, so a single-train row
-          // isn't rendered any wider than rows that share a line.
-          const chipLanes = Math.max(clusterLanes, 2);
-          const laneWidth = `calc((100% - ${AXIS_WIDTH}px) / ${chipLanes} - ${LANE_GAP}px)`;
+          const laneWidth = `calc((100% - ${AXIS_WIDTH}px) / ${clusterLanes} - ${LANE_GAP}px)`;
           return (
             <div key={`${row.train}-${idx}`}
               ref={isNext ? nextTrainRef : null}
