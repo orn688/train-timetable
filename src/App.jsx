@@ -48,6 +48,9 @@ const PX_PER_MIN = 2.4;
 const ROW_HEIGHT = 34;
 const LANE_GAP = 4;
 const AXIS_WIDTH = 56;
+// Horizontal length of the chip's pointed left edge. The tip sits at the
+// chip's left (x = 0), which is pinned to the axis at the crossing time.
+const CHIP_TIP = 10;
 
 const formatHourLabel = (totalMin) => {
   const h = Math.floor(totalMin / 60) % 24;
@@ -402,6 +405,8 @@ export default function App() {
     accentBorder: "rgba(232,201,109,0.4)",
     outbound: "#5b9cf6",
     inbound: "#e87c5b",
+    chipOut: "#1e2d44",
+    chipIn: "#3a2625",
     rowHoverBg: "rgba(255,255,255,0.04)",
   } : {
     bg: "#ffffff",
@@ -416,6 +421,8 @@ export default function App() {
     accentBorder: "rgba(212,169,71,0.3)",
     outbound: "#0066cc",
     inbound: "#cc5522",
+    chipOut: "#e0edf9",
+    chipIn: "#f9ebe4",
     rowHoverBg: "rgba(0,0,0,0.04)",
   };
 
@@ -705,41 +712,32 @@ export default function App() {
                 left: `calc(${AXIS_WIDTH}px + ${laneOffset})`,
                 width: laneWidth,
                 height: `${ROW_HEIGHT}px`,
-                display: "grid",
-                gridTemplateColumns: wide ? "auto 1fr auto" : "auto auto 1fr",
+                display: "flex",
                 alignItems: "center",
-                gap: "8px",
-                // padding-left budgets space for the absolute-positioned
-                // triangle (0–8 px) and live-prediction dot (12–18 px), with
-                // matching 4 px gaps on either side of the dot, so the time
-                // text starts cleanly at 22 px.
-                padding: "0 10px 0 22px",
-                background: "transparent",
-                borderRadius: "0 4px 4px 0",
-                transition: "background 0.12s, opacity 0.4s",
+                gap: "7px",
+                // The chip's pointed left edge (the clip-path triangle below)
+                // pins it to the exact crossing time on the axis. padding-left
+                // clears that triangle plus the live-prediction dot so the time
+                // text starts cleanly past them.
+                padding: `0 10px 0 ${CHIP_TIP + 14}px`,
+                // Opaque chip that floats above the now line and gridlines.
+                background: row.dir === "out" ? colors.chipOut : colors.chipIn,
+                borderRadius: "0 7px 7px 0",
+                // Rounded rectangle on the right, tapering to a point on the
+                // left whose tip (0 50%) marks the exact time of passing.
+                clipPath: `polygon(0 50%, ${CHIP_TIP}px 0, 100% 0, 100% 100%, ${CHIP_TIP}px 100%)`,
+                // drop-shadow (not box-shadow) traces the clipped chip outline,
+                // including the pointed tip, giving the floating-chip look.
+                filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.35))",
+                transition: "opacity 0.4s",
                 animationDelay: `${idx * 18}ms`,
-                opacity: passed ? 0.25 : 1,
-                zIndex: 2,
+                opacity: passed ? 0.3 : 1,
+                zIndex: isNext ? 6 : 4,
               }}>
-              {/* Time-point marker. Sits at the row's vertical center, which
-                  in turn is anchored to the train's exact crossing time, so
-                  the triangle's tip pins down a single point on the axis. */}
-              <span aria-hidden="true" style={{
-                position: "absolute",
-                left: 0,
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: 0,
-                height: 0,
-                borderTop: "6px solid transparent",
-                borderBottom: "6px solid transparent",
-                borderRight: `8px solid ${row.dir === "out" ? colors.outbound : colors.inbound}`,
-                opacity: row.cancelled ? 0.55 : 1,
-              }} />
               {row.isLive && !row.cancelled && (
                 <span title="Live prediction" style={{
                   position: "absolute",
-                  left: 12,
+                  left: CHIP_TIP + 3,
                   top: "50%",
                   transform: "translateY(-50%)",
                   width: 6,
@@ -760,39 +758,21 @@ export default function App() {
               }}>
                 {wide ? row.crossing : row.crossing.replace(/ (AM|PM)$/, "")}
               </span>
-              {wide ? (
-                <>
-                  <span style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-                    <span aria-hidden="true" style={{
-                      ...arrowStyle,
-                      color: row.dir === "out" ? colors.outbound : colors.inbound,
-                      opacity: row.cancelled ? 0.55 : 1,
-                    }}>
-                      {row.dir === "out" ? "←" : "→"}
-                    </span>
-                    <span style={{ fontSize: "10px", color: row.cancelled ? "#e0524b" : colors.textMuted, letterSpacing: "0.08em", fontWeight: row.cancelled ? 600 : "normal", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {row.cancelled ? "CANCELLED" : row.direction}
-                    </span>
-                  </span>
-                  <span style={{ fontSize: "10px", color: colors.textDim, textAlign: "right", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>
-                    #{row.train}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span aria-hidden="true" style={{
-                    ...arrowStyle,
-                    fontSize: "18px",
-                    color: row.dir === "out" ? colors.outbound : colors.inbound,
-                    opacity: row.cancelled ? 0.55 : 1,
-                  }}>
-                    {row.dir === "out" ? "←" : "→"}
-                  </span>
-                  <span style={{ fontSize: "10px", color: row.cancelled ? "#e0524b" : colors.textDim, textAlign: "right", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>
-                    {row.cancelled ? "CANC" : `#${row.train}`}
-                  </span>
-                </>
-              )}
+              <span aria-hidden="true" style={{
+                ...arrowStyle,
+                fontSize: "26px",
+                fontWeight: 700,
+                color: row.dir === "out" ? colors.outbound : colors.inbound,
+                opacity: row.cancelled ? 0.55 : 1,
+              }}>
+                {row.dir === "out" ? "←" : "→"}
+              </span>
+              {/* Train number, left-justified right next to the time. The
+                  destination is intentionally omitted — it's shown in the
+                  legend at the top of the screen. */}
+              <span style={{ fontSize: "10px", color: row.cancelled ? "#e0524b" : colors.textDim, letterSpacing: "0.05em", whiteSpace: "nowrap", fontWeight: row.cancelled ? 600 : "normal" }}>
+                {row.cancelled ? "CANC" : `#${row.train}`}
+              </span>
             </div>
           );
         })}
