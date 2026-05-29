@@ -699,9 +699,11 @@ export default function App() {
         {positionedRows.map(({ row, idx, top, lane, clusterLanes }) => {
           const passed = isToday && (timeToMin(row.crossing) ?? 9999) < nowMin - 5;
           const isNext = !passed && nextTrainKey === `${row.dir}-${row.train}-${idx}`;
-          const wide = clusterLanes === 1;
           const laneOffset = `calc(${lane} * (100% - ${AXIS_WIDTH}px) / ${clusterLanes})`;
-          const laneWidth = `calc((100% - ${AXIS_WIDTH}px) / ${clusterLanes} - ${wide ? 0 : LANE_GAP}px)`;
+          // Every chip uses the squashed (≥2-lane) width, so a single-train row
+          // isn't rendered any wider than rows that share a line.
+          const chipLanes = Math.max(clusterLanes, 2);
+          const laneWidth = `calc((100% - ${AXIS_WIDTH}px) / ${chipLanes} - ${LANE_GAP}px)`;
           return (
             <div key={`${row.train}-${idx}`}
               ref={isNext ? nextTrainRef : null}
@@ -756,7 +758,7 @@ export default function App() {
                 opacity: row.cancelled ? 0.55 : 1,
                 fontVariantNumeric: "tabular-nums",
               }}>
-                {wide ? row.crossing : row.crossing.replace(/ (AM|PM)$/, "")}
+                {row.crossing.replace(/ (AM|PM)$/, "")}
               </span>
               <span aria-hidden="true" style={{
                 ...arrowStyle,
