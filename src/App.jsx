@@ -714,21 +714,6 @@ export default function App() {
                 left: `calc(${AXIS_WIDTH}px + ${laneOffset})`,
                 width: laneWidth,
                 height: `${ROW_HEIGHT}px`,
-                // drop-shadow lives on this unclipped wrapper, not on the
-                // clipped chip below: applied to the same element, clip-path
-                // crops the filter output and the shadow gets cut off at the
-                // chip's edges. From here it traces the chip's outline (tip
-                // included) and spills past it for a true floating look.
-                filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.35))",
-                transition: "opacity 0.4s",
-                animationDelay: `${idx * 18}ms`,
-                opacity: passed ? 0.3 : 1,
-                zIndex: isNext ? 6 : 4,
-              }}>
-              <div style={{
-                position: "relative",
-                width: "100%",
-                height: "100%",
                 display: "flex",
                 alignItems: "center",
                 gap: "7px",
@@ -743,6 +728,10 @@ export default function App() {
                 // Rounded rectangle on the right, tapering to a point on the
                 // left whose tip (0 50%) marks the exact time of passing.
                 clipPath: `polygon(0 50%, ${CHIP_TIP}px 0, 100% 0, 100% 100%, ${CHIP_TIP}px 100%)`,
+                transition: "opacity 0.4s",
+                animationDelay: `${idx * 18}ms`,
+                opacity: passed ? 0.3 : 1,
+                zIndex: isNext ? 6 : 4,
               }}>
               {row.isLive && !row.cancelled && (
                 <span title="Live prediction" style={{
@@ -783,7 +772,6 @@ export default function App() {
               <span style={{ fontSize: "10px", color: row.cancelled ? "#e0524b" : colors.textDim, letterSpacing: "0.05em", whiteSpace: "nowrap", fontWeight: row.cancelled ? 600 : "normal" }}>
                 {row.cancelled ? "CANC" : `#${row.train}`}
               </span>
-              </div>
             </div>
           );
         })}
