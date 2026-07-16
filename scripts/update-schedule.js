@@ -137,10 +137,6 @@ async function fetchMBTAHolidays() {
     }
   }
 
-  if (Object.keys(holidays).length === 0) {
-    throw new Error('No holidays found in MBTA API response');
-  }
-
   return holidays;
 }
 
