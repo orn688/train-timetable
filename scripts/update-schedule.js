@@ -170,7 +170,7 @@ ${schedulesStr},
 // MBTA holidays on which Commuter Rail runs a weekend schedule.
 // Used for UI labeling — the schedule rows above already reflect actual service.
 export const MBTA_HOLIDAYS = {
-${holidaysStr},
+${holidaysStr}
 };
 `;
 
