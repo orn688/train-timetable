@@ -2,168 +2,10 @@
 // This file is automatically updated daily by GitHub Actions.
 // Each entry under SCHEDULES is the Porter Square schedule for that specific date.
 
-export const LAST_UPDATED = "2026-10-30";
+export const LAST_UPDATED = "2026-10-31";
 
 // Per-date Porter Square schedules (from MBTA /schedules?filter[date]=...)
 export const SCHEDULES = {
-  "2026-10-30": {
-    outbound: [
-      {
-        "train": "4301",
-        "porter": "5:50 AM"
-      },
-      {
-        "train": "4001",
-        "porter": "6:30 AM"
-      },
-      {
-        "train": "4003",
-        "porter": "7:40 AM"
-      },
-      {
-        "train": "4005",
-        "porter": "8:40 AM"
-      },
-      {
-        "train": "4303",
-        "porter": "9:40 AM"
-      },
-      {
-        "train": "4007",
-        "porter": "10:40 AM"
-      },
-      {
-        "train": "4305",
-        "porter": "11:40 AM"
-      },
-      {
-        "train": "4009",
-        "porter": "12:40 PM"
-      },
-      {
-        "train": "4307",
-        "porter": "1:40 PM"
-      },
-      {
-        "train": "4011",
-        "porter": "2:40 PM"
-      },
-      {
-        "train": "4013",
-        "porter": "3:50 PM"
-      },
-      {
-        "train": "4309",
-        "porter": "4:35 PM"
-      },
-      {
-        "train": "4015",
-        "porter": "5:10 PM"
-      },
-      {
-        "train": "4017",
-        "porter": "5:40 PM"
-      },
-      {
-        "train": "4019",
-        "porter": "6:40 PM"
-      },
-      {
-        "train": "4021",
-        "porter": "7:40 PM"
-      },
-      {
-        "train": "4023",
-        "porter": "8:40 PM"
-      },
-      {
-        "train": "4025",
-        "porter": "10:40 PM"
-      },
-      {
-        "train": "4027",
-        "porter": "12:00 AM"
-      }
-    ],
-    inbound: [
-      {
-        "train": "4002",
-        "porter": "5:47 AM"
-      },
-      {
-        "train": "4004",
-        "porter": "6:45 AM"
-      },
-      {
-        "train": "4006",
-        "porter": "7:18 AM"
-      },
-      {
-        "train": "4302",
-        "porter": "7:52 AM"
-      },
-      {
-        "train": "4008",
-        "porter": "8:39 AM"
-      },
-      {
-        "train": "4010",
-        "porter": "9:43 AM"
-      },
-      {
-        "train": "4012",
-        "porter": "10:47 AM"
-      },
-      {
-        "train": "4304",
-        "porter": "11:47 AM"
-      },
-      {
-        "train": "4014",
-        "porter": "12:47 PM"
-      },
-      {
-        "train": "4306",
-        "porter": "1:47 PM"
-      },
-      {
-        "train": "4016",
-        "porter": "2:47 PM"
-      },
-      {
-        "train": "4308",
-        "porter": "3:47 PM"
-      },
-      {
-        "train": "4018",
-        "porter": "4:47 PM"
-      },
-      {
-        "train": "4020",
-        "porter": "5:57 PM"
-      },
-      {
-        "train": "4310",
-        "porter": "6:34 PM"
-      },
-      {
-        "train": "4022",
-        "porter": "7:39 PM"
-      },
-      {
-        "train": "4024",
-        "porter": "8:52 PM"
-      },
-      {
-        "train": "4026",
-        "porter": "10:47 PM"
-      },
-      {
-        "train": "4028",
-        "porter": "11:26 PM"
-      }
-    ],
-  },
   "2026-10-31": {
     outbound: [
       {
@@ -779,6 +621,164 @@ export const SCHEDULES = {
     ],
   },
   "2026-11-05": {
+    outbound: [
+      {
+        "train": "4301",
+        "porter": "5:50 AM"
+      },
+      {
+        "train": "4001",
+        "porter": "6:30 AM"
+      },
+      {
+        "train": "4003",
+        "porter": "7:40 AM"
+      },
+      {
+        "train": "4005",
+        "porter": "8:40 AM"
+      },
+      {
+        "train": "4303",
+        "porter": "9:40 AM"
+      },
+      {
+        "train": "4007",
+        "porter": "10:40 AM"
+      },
+      {
+        "train": "4305",
+        "porter": "11:40 AM"
+      },
+      {
+        "train": "4009",
+        "porter": "12:40 PM"
+      },
+      {
+        "train": "4307",
+        "porter": "1:40 PM"
+      },
+      {
+        "train": "4011",
+        "porter": "2:40 PM"
+      },
+      {
+        "train": "4013",
+        "porter": "3:50 PM"
+      },
+      {
+        "train": "4309",
+        "porter": "4:35 PM"
+      },
+      {
+        "train": "4015",
+        "porter": "5:10 PM"
+      },
+      {
+        "train": "4017",
+        "porter": "5:40 PM"
+      },
+      {
+        "train": "4019",
+        "porter": "6:40 PM"
+      },
+      {
+        "train": "4021",
+        "porter": "7:40 PM"
+      },
+      {
+        "train": "4023",
+        "porter": "8:40 PM"
+      },
+      {
+        "train": "4025",
+        "porter": "10:40 PM"
+      },
+      {
+        "train": "4027",
+        "porter": "12:00 AM"
+      }
+    ],
+    inbound: [
+      {
+        "train": "4002",
+        "porter": "5:47 AM"
+      },
+      {
+        "train": "4004",
+        "porter": "6:45 AM"
+      },
+      {
+        "train": "4006",
+        "porter": "7:18 AM"
+      },
+      {
+        "train": "4302",
+        "porter": "7:52 AM"
+      },
+      {
+        "train": "4008",
+        "porter": "8:39 AM"
+      },
+      {
+        "train": "4010",
+        "porter": "9:43 AM"
+      },
+      {
+        "train": "4012",
+        "porter": "10:47 AM"
+      },
+      {
+        "train": "4304",
+        "porter": "11:47 AM"
+      },
+      {
+        "train": "4014",
+        "porter": "12:47 PM"
+      },
+      {
+        "train": "4306",
+        "porter": "1:47 PM"
+      },
+      {
+        "train": "4016",
+        "porter": "2:47 PM"
+      },
+      {
+        "train": "4308",
+        "porter": "3:47 PM"
+      },
+      {
+        "train": "4018",
+        "porter": "4:47 PM"
+      },
+      {
+        "train": "4020",
+        "porter": "5:57 PM"
+      },
+      {
+        "train": "4310",
+        "porter": "6:34 PM"
+      },
+      {
+        "train": "4022",
+        "porter": "7:39 PM"
+      },
+      {
+        "train": "4024",
+        "porter": "8:52 PM"
+      },
+      {
+        "train": "4026",
+        "porter": "10:47 PM"
+      },
+      {
+        "train": "4028",
+        "porter": "11:26 PM"
+      }
+    ],
+  },
+  "2026-11-06": {
     outbound: [
       {
         "train": "4301",
